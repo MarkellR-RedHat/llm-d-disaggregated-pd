@@ -1,0 +1,1570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deploying llm-d with Disaggregated Prefill &amp; Decode</title>
+    <link rel="icon" type="image/png" href="https://llm-d.ai/img/llm-d-icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@500;600;700;900&family=Red+Hat+Text:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Red Hat Text', sans-serif;
+            background: #0a0a0f;
+            color: #e2e8f0;
+            line-height: 1.6;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: 'Red Hat Display', sans-serif;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Header */
+        header {
+            background: rgba(26,26,46,.92);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid #1e293b;
+            padding: 20px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .logo-title {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-title img {
+            height: 40px;
+            width: 40px;
+        }
+
+        .logo-title h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #e2e8f0;
+        }
+
+        .header-links {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .header-links a {
+            color: #94a3b8;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .header-links a:hover {
+            color: #3b82f6;
+        }
+
+        /* Hero */
+        .hero {
+            padding: 80px 0;
+            text-align: center;
+        }
+
+        .hero h2 {
+            font-size: 3rem;
+            font-weight: 900;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #1a5fb4, #2ec27e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            font-size: 1.25rem;
+            color: #94a3b8;
+            max-width: 700px;
+            margin: 0 auto 60px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 40px;
+        }
+
+        .stat-card {
+            background: #1a1a2e;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            padding: 30px;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            border-color: #3b82f6;
+        }
+
+        .stat-value {
+            font-size: 3rem;
+            font-weight: 900;
+            color: #3b82f6;
+            font-family: 'Red Hat Display', sans-serif;
+        }
+
+        .stat-label {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #e2e8f0;
+            margin-top: 10px;
+        }
+
+        .stat-description {
+            font-size: 0.9rem;
+            color: #94a3b8;
+            margin-top: 5px;
+        }
+
+        /* Sections */
+        section {
+            padding: 80px 0;
+        }
+
+        section h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        /* Section 1: Phase Animation */
+        .phase-panels {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .phase-panel {
+            background: #1a1a2e;
+            border: 2px solid;
+            border-radius: 12px;
+            padding: 30px;
+        }
+
+        .phase-panel.prefill {
+            border-color: #1a5fb4;
+        }
+
+        .phase-panel.decode {
+            border-color: #2ec27e;
+        }
+
+        .phase-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .phase-badge {
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .phase-panel.prefill .phase-badge {
+            background: #1a5fb4;
+            color: #fff;
+        }
+
+        .phase-panel.decode .phase-badge {
+            background: #2ec27e;
+            color: #fff;
+        }
+
+        .phase-description {
+            font-size: 1.1rem;
+            color: #94a3b8;
+            margin-bottom: 30px;
+        }
+
+        .token-visualization {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 30px;
+            margin-bottom: 30px;
+            min-height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .token-grid {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 8px;
+            width: 100%;
+        }
+
+        .token {
+            aspect-ratio: 1;
+            border-radius: 4px;
+            background: #1a5fb4;
+            opacity: 0;
+            animation: tokenAppearAll 2s ease-in-out infinite;
+        }
+
+        .token:nth-child(n) {
+            animation-delay: calc(var(--i) * 0.02s);
+        }
+
+        @keyframes tokenAppearAll {
+            0%, 20% { opacity: 0; transform: scale(0.8); }
+            30%, 90% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0; transform: scale(0.8); }
+        }
+
+        .token-sequence {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .token-sequential {
+            width: 40px;
+            height: 40px;
+            border-radius: 4px;
+            background: #2ec27e;
+            opacity: 0;
+            animation: tokenAppearSequential 4s ease-in-out infinite;
+        }
+
+        @keyframes tokenAppearSequential {
+            0% { opacity: 0; transform: translateX(-20px) scale(0.8); }
+            10% { opacity: 1; transform: translateX(0) scale(1); }
+            90% { opacity: 1; transform: translateX(0) scale(1); }
+            100% { opacity: 0; transform: translateX(20px) scale(0.8); }
+        }
+
+        .utilization-bars {
+            margin-bottom: 20px;
+        }
+
+        .util-bar {
+            margin-bottom: 15px;
+        }
+
+        .util-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            color: #94a3b8;
+            margin-bottom: 5px;
+        }
+
+        .util-track {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .util-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s ease-out;
+        }
+
+        .prefill .util-fill {
+            background: #1a5fb4;
+        }
+
+        .decode .util-fill {
+            background: #2ec27e;
+        }
+
+        .util-fill.compute-high {
+            width: 95%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .util-fill.compute-low {
+            width: 15%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .util-fill.memory-moderate {
+            width: 55%;
+            animation: pulse 2s ease-in-out infinite 0.5s;
+        }
+
+        .util-fill.memory-high {
+            width: 90%;
+            animation: pulse 2s ease-in-out infinite 0.5s;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .phase-label {
+            font-weight: 600;
+            color: #e2e8f0;
+            text-align: center;
+            padding: 15px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .key-insight {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(155, 77, 155, 0.1));
+            border-left: 4px solid #9b4d9b;
+            padding: 25px;
+            border-radius: 8px;
+            margin-top: 40px;
+        }
+
+        .key-insight h3 {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            color: #e2e8f0;
+        }
+
+        .key-insight p {
+            font-size: 1.1rem;
+            color: #94a3b8;
+            line-height: 1.8;
+        }
+
+        /* Section 2: Architecture Comparison */
+        .architecture-comparison {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 40px;
+            margin-top: 40px;
+        }
+
+        .architecture-panel {
+            background: #1a1a2e;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            padding: 30px;
+        }
+
+        .architecture-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .architecture-description {
+            color: #94a3b8;
+            margin-bottom: 30px;
+        }
+
+        .architecture-viz {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 40px 20px;
+            min-height: 300px;
+        }
+
+        .gpu-pods {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            align-items: center;
+        }
+
+        .gpu-pod {
+            width: 200px;
+            height: 80px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            position: relative;
+        }
+
+        .standard-pod {
+            background: linear-gradient(135deg, #1a5fb4, #2ec27e);
+            animation: alternatePhases 4s ease-in-out infinite;
+        }
+
+        @keyframes alternatePhases {
+            0%, 45% { background: linear-gradient(135deg, #1a5fb4, #1a5fb4); }
+            50%, 95% { background: linear-gradient(135deg, #2ec27e, #2ec27e); }
+            100% { background: linear-gradient(135deg, #1a5fb4, #1a5fb4); }
+        }
+
+        .disaggregated-section {
+            display: flex;
+            gap: 40px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .pod-group {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .prefill-pod {
+            background: #1a5fb4;
+            width: 150px;
+            height: 60px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.85rem;
+            animation: pulseGlow 2s ease-in-out infinite;
+        }
+
+        .decode-pod {
+            background: #2ec27e;
+            width: 150px;
+            height: 60px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.85rem;
+            animation: pulseGlow 2s ease-in-out infinite 1s;
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
+            50% { box-shadow: 0 0 30px rgba(59, 130, 246, 0.6); }
+        }
+
+        .kv-transfer {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .transfer-arrow {
+            width: 80px;
+            height: 4px;
+            background: #9b4d9b;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .transfer-arrow::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, #fff, transparent);
+            animation: transferFlow 2s linear infinite;
+        }
+
+        @keyframes transferFlow {
+            0% { left: -20px; }
+            100% { left: 100%; }
+        }
+
+        .transfer-arrow::before {
+            content: '→';
+            position: absolute;
+            right: -10px;
+            top: -8px;
+            color: #9b4d9b;
+            font-size: 1.2rem;
+        }
+
+        .transfer-label {
+            font-size: 0.8rem;
+            color: #9b4d9b;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        /* Section 3: Benchmarks */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #1e293b;
+            flex-wrap: wrap;
+        }
+
+        .tab {
+            padding: 15px 25px;
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+            font-family: 'Red Hat Text', sans-serif;
+        }
+
+        .tab:hover {
+            color: #e2e8f0;
+        }
+
+        .tab.active {
+            color: #3b82f6;
+            border-bottom-color: #3b82f6;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .chart-container {
+            background: #1a1a2e;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 400px;
+        }
+
+        .insight-callout {
+            background: rgba(59, 130, 246, 0.1);
+            border-left: 4px solid #3b82f6;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .insight-callout h4 {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            color: #3b82f6;
+        }
+
+        .insight-callout p {
+            color: #94a3b8;
+        }
+
+        /* Section 4: Deployment Guide */
+        .deployment-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+        }
+
+        .deployment-step {
+            background: #1a1a2e;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            padding: 30px;
+            position: relative;
+        }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .step-number {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #1a5fb4, #9b4d9b);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+
+        .step-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .step-description {
+            color: #94a3b8;
+            margin-bottom: 20px;
+            line-height: 1.8;
+        }
+
+        .code-block {
+            position: relative;
+            background: #0a0a0f;
+            border: 1px solid #1e293b;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 15px;
+            overflow-x: auto;
+        }
+
+        .code-block.highlight {
+            border-left: 4px solid #3b82f6;
+        }
+
+        .copy-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 8px 16px;
+            background: #3b82f6;
+            border: none;
+            border-radius: 6px;
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: background 0.2s;
+            font-family: 'Red Hat Text', sans-serif;
+        }
+
+        .copy-button:hover {
+            background: #2563eb;
+        }
+
+        .copy-button.copied {
+            background: #2ec27e;
+        }
+
+        pre {
+            margin: 0;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: #e2e8f0;
+        }
+
+        .yaml-key {
+            color: #3b82f6;
+        }
+
+        .yaml-string {
+            color: #2ec27e;
+        }
+
+        .yaml-number {
+            color: #9b4d9b;
+        }
+
+        /* Section 5: Performance Impact */
+        .impact-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .impact-card {
+            background: #1a1a2e;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .impact-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+
+        .impact-value {
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: #3b82f6;
+            margin-bottom: 20px;
+            font-family: 'Red Hat Display', sans-serif;
+        }
+
+        .impact-bar {
+            height: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .impact-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #1a5fb4, #2ec27e);
+            width: 0;
+            transition: width 1.5s ease-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 700;
+        }
+
+        .impact-card.visible .impact-bar-fill {
+            width: var(--fill-width);
+        }
+
+        .impact-description {
+            color: #94a3b8;
+            line-height: 1.8;
+        }
+
+        /* Footer */
+        footer {
+            background: #1a1a2e;
+            border-top: 1px solid #1e293b;
+            padding: 60px 0 40px;
+            margin-top: 80px;
+        }
+
+        .footer-content {
+            text-align: center;
+        }
+
+        .footer-attribution {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #e2e8f0;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: #94a3b8;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: #3b82f6;
+        }
+
+        .footer-info {
+            color: #94a3b8;
+            font-size: 0.95rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h2 {
+                font-size: 2rem;
+            }
+
+            .hero-subtitle {
+                font-size: 1.1rem;
+            }
+
+            section h2 {
+                font-size: 2rem;
+            }
+
+            .phase-panels,
+            .architecture-comparison {
+                grid-template-columns: 1fr;
+            }
+
+            .disaggregated-section {
+                flex-direction: column;
+            }
+
+            .transfer-arrow {
+                transform: rotate(90deg);
+            }
+
+            .logo-title h1 {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo-title">
+                    <img src="https://llm-d.ai/img/llm-d-icon.png" alt="llm-d">
+                    <h1>Deploying llm-d with Disaggregated Prefill &amp; Decode</h1>
+                </div>
+                <div class="header-links">
+                    <a href="https://markellr-redhat.github.io/llm-d-content-hub/">Content Hub</a>
+                    <a href="blog/index.html">Blog Post</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="container">
+                <h2>Separate the Phases, Double the Throughput</h2>
+                <p class="hero-subtitle">
+                    By splitting prefill and decode workloads across dedicated GPU pods, llm-d achieves dramatic improvements in latency, throughput, and resource utilization.
+                </p>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" style="color:#1a5fb4">19.8x</div>
+                        <div class="stat-label">TTFT Improvement</div>
+                        <div class="stat-description">at 32K context with KV cache</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" style="color:#2ec27e">1,483</div>
+                        <div class="stat-label">Tokens/sec</div>
+                        <div class="stat-description">50 concurrent requests</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" style="color:#9b4d9b">30-60%</div>
+                        <div class="stat-label">Throughput Gain</div>
+                        <div class="stat-description">with dedicated P/D pods</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" style="color:#ef4444">~0%</div>
+                        <div class="stat-label">Cache Benefit</div>
+                        <div class="stat-description">without intelligent routing</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="why-separate">
+            <div class="container">
+                <h2>Why Separate Prefill and Decode?</h2>
+                <div class="phase-panels">
+                    <div class="phase-panel prefill">
+                        <div class="phase-title">
+                            <span class="phase-badge">Prefill</span>
+                        </div>
+                        <p class="phase-description">Processing 1,000 input tokens simultaneously</p>
+
+                        <div class="token-visualization">
+                            <div class="token-grid" id="prefill-tokens"></div>
+                        </div>
+
+                        <div class="utilization-bars">
+                            <div class="util-bar">
+                                <div class="util-label">
+                                    <span>GPU Compute</span>
+                                    <span>95%</span>
+                                </div>
+                                <div class="util-track">
+                                    <div class="util-fill compute-high"></div>
+                                </div>
+                            </div>
+                            <div class="util-bar">
+                                <div class="util-label">
+                                    <span>Memory Bandwidth</span>
+                                    <span>55%</span>
+                                </div>
+                                <div class="util-track">
+                                    <div class="util-fill memory-moderate"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="phase-label">
+                            Compute-bound — GPU cores fully utilized
+                        </div>
+                    </div>
+
+                    <div class="phase-panel decode">
+                        <div class="phase-title">
+                            <span class="phase-badge">Decode</span>
+                        </div>
+                        <p class="phase-description">Generating tokens one at a time</p>
+
+                        <div class="token-visualization">
+                            <div class="token-sequence" id="decode-tokens"></div>
+                        </div>
+
+                        <div class="utilization-bars">
+                            <div class="util-bar">
+                                <div class="util-label">
+                                    <span>GPU Compute</span>
+                                    <span>15%</span>
+                                </div>
+                                <div class="util-track">
+                                    <div class="util-fill compute-low"></div>
+                                </div>
+                            </div>
+                            <div class="util-bar">
+                                <div class="util-label">
+                                    <span>Memory Bandwidth</span>
+                                    <span>90%</span>
+                                </div>
+                                <div class="util-track">
+                                    <div class="util-fill memory-high"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="phase-label">
+                            Memory-bound — waiting on KV cache reads
+                        </div>
+                    </div>
+                </div>
+
+                <div class="key-insight">
+                    <h3>Key Insight</h3>
+                    <p>
+                        Mixing both phases on the same GPU leads to interference — prefill starves decode of memory bandwidth, while decode leaves GPU compute underutilized during generation. By separating these workloads, each pod type can be optimized for its specific resource profile.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <section id="architecture">
+            <div class="container">
+                <h2>Standard vs. Disaggregated Architecture</h2>
+                <div class="architecture-comparison">
+                    <div class="architecture-panel">
+                        <h3 class="architecture-title">Standard (role=both)</h3>
+                        <p class="architecture-description">
+                            Each pod does both phases — GPU alternates between compute-bound and memory-bound work
+                        </p>
+                        <div class="architecture-viz">
+                            <div class="gpu-pods">
+                                <div class="gpu-pod standard-pod">GPU Pod 1</div>
+                                <div class="gpu-pod standard-pod">GPU Pod 2</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="architecture-panel">
+                        <h3 class="architecture-title">Disaggregated</h3>
+                        <p class="architecture-description">
+                            Prefill pods handle prompt processing, decode pods handle token generation
+                        </p>
+                        <div class="architecture-viz">
+                            <div class="disaggregated-section">
+                                <div class="pod-group">
+                                    <div class="prefill-pod">Prefill Pod</div>
+                                </div>
+                                <div class="kv-transfer">
+                                    <div class="transfer-arrow"></div>
+                                    <div class="transfer-label">KV Cache Transfer<br>via NixL/RDMA</div>
+                                </div>
+                                <div class="pod-group">
+                                    <div class="decode-pod">Decode Pod 1</div>
+                                    <div class="decode-pod">Decode Pod 2</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="benchmarks">
+            <div class="container">
+                <h2>Real Benchmark Data</h2>
+                <div class="tabs">
+                    <button class="tab active" data-tab="ttft">TTFT by Context Length</button>
+                    <button class="tab" data-tab="throughput">Throughput Scaling</button>
+                    <button class="tab" data-tab="cache">Cache Reuse Impact</button>
+                </div>
+
+                <div class="tab-content active" id="ttft-content">
+                    <div class="chart-container">
+                        <div class="chart-wrapper">
+                            <canvas id="ttft-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="insight-callout">
+                        <h4>Key Insight</h4>
+                        <p>At 32K tokens, cached TTFT is 19.8x faster than cold — dropping from 4.74s to 0.24s. This dramatic improvement shows the power of prefix caching when combined with intelligent routing.</p>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="throughput-content">
+                    <div class="chart-container">
+                        <div class="chart-wrapper">
+                            <canvas id="throughput-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="insight-callout">
+                        <h4>Key Insight</h4>
+                        <p>Near-linear scaling: 50x concurrency yields 32.6x throughput increase. Disaggregated architecture maintains efficiency even under heavy load by preventing phase interference.</p>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="cache-content">
+                    <div class="chart-container">
+                        <div class="chart-wrapper">
+                            <canvas id="cache-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="insight-callout">
+                        <h4>Key Insight</h4>
+                        <p>Without intelligent routing, requests hit random pods — cache reuse drops to near zero (0.6-1.0x), eliminating the primary performance benefit. Cache-aware routing is essential for realizing the gains from prefix caching.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="deployment">
+            <div class="container">
+                <h2>Deployment Guide</h2>
+                <div class="deployment-steps">
+                    <div class="deployment-step">
+                        <div class="step-header">
+                            <div class="step-number">1</div>
+                            <h3 class="step-title">Standard Deployment</h3>
+                        </div>
+                        <p class="step-description">
+                            Start with a basic llm-d deployment with prefix-aware routing. This baseline configuration uses pods that handle both prefill and decode.
+                        </p>
+                        <div class="code-block">
+                            <button class="copy-button" onclick="copyCode(this, 'code1')">Copy</button>
+                            <pre id="code1"><span class="yaml-key">apiVersion:</span> <span class="yaml-string">inference.llm-d.ai/v1alpha1</span>
+<span class="yaml-key">kind:</span> <span class="yaml-string">LLMInferenceService</span>
+<span class="yaml-key">metadata:</span>
+  <span class="yaml-key">name:</span> <span class="yaml-string">llama-3-3-70b-fp8</span>
+  <span class="yaml-key">namespace:</span> <span class="yaml-string">llm-d</span>
+<span class="yaml-key">spec:</span>
+  <span class="yaml-key">modelArtifact:</span>
+    <span class="yaml-key">uri:</span> <span class="yaml-string">"oci://quay.io/llm-d/models:llama-3.3-70b-instruct-fp8-kv-int8"</span>
+  <span class="yaml-key">inferenceConfig:</span>
+    <span class="yaml-key">replicas:</span> <span class="yaml-number">2</span>
+    <span class="yaml-key">accelerator:</span>
+      <span class="yaml-key">type:</span> <span class="yaml-string">nvidia.com/gpu</span>
+      <span class="yaml-key">count:</span> <span class="yaml-number">4</span>
+      <span class="yaml-key">product:</span> <span class="yaml-string">H200</span>
+  <span class="yaml-key">routing:</span>
+    <span class="yaml-key">strategy:</span> <span class="yaml-string">prefix-aware</span></pre>
+                        </div>
+                    </div>
+
+                    <div class="deployment-step">
+                        <div class="step-header">
+                            <div class="step-number">2</div>
+                            <h3 class="step-title">Add Prefill Workers</h3>
+                        </div>
+                        <p class="step-description">
+                            Add dedicated prefill workers to handle prompt processing. These pods will focus exclusively on the compute-intensive prefill phase.
+                        </p>
+                        <div class="code-block highlight">
+                            <button class="copy-button" onclick="copyCode(this, 'code2')">Copy</button>
+                            <pre id="code2"><span class="yaml-key">apiVersion:</span> <span class="yaml-string">inference.llm-d.ai/v1alpha1</span>
+<span class="yaml-key">kind:</span> <span class="yaml-string">LLMInferenceService</span>
+<span class="yaml-key">metadata:</span>
+  <span class="yaml-key">name:</span> <span class="yaml-string">llama-3-3-70b-fp8</span>
+  <span class="yaml-key">namespace:</span> <span class="yaml-string">llm-d</span>
+<span class="yaml-key">spec:</span>
+  <span class="yaml-key">modelArtifact:</span>
+    <span class="yaml-key">uri:</span> <span class="yaml-string">"oci://quay.io/llm-d/models:llama-3.3-70b-instruct-fp8-kv-int8"</span>
+  <span class="yaml-key">inferenceConfig:</span>
+    <span class="yaml-key">replicas:</span> <span class="yaml-number">2</span>
+    <span class="yaml-key">accelerator:</span>
+      <span class="yaml-key">type:</span> <span class="yaml-string">nvidia.com/gpu</span>
+      <span class="yaml-key">count:</span> <span class="yaml-number">4</span>
+      <span class="yaml-key">product:</span> <span class="yaml-string">H200</span>
+  <span class="yaml-key">prefill:</span>
+    <span class="yaml-key">replicas:</span> <span class="yaml-number">1</span>
+    <span class="yaml-key">accelerator:</span>
+      <span class="yaml-key">type:</span> <span class="yaml-string">nvidia.com/gpu</span>
+      <span class="yaml-key">count:</span> <span class="yaml-number">4</span>
+      <span class="yaml-key">product:</span> <span class="yaml-string">H200</span>
+  <span class="yaml-key">routing:</span>
+    <span class="yaml-key">strategy:</span> <span class="yaml-string">prefix-aware</span></pre>
+                        </div>
+                    </div>
+
+                    <div class="deployment-step">
+                        <div class="step-header">
+                            <div class="step-number">3</div>
+                            <h3 class="step-title">Enable KV Cache Transfer</h3>
+                        </div>
+                        <p class="step-description">
+                            Configure high-speed KV cache transfer between prefill and decode pods using NixL with RDMA transport for minimal latency.
+                        </p>
+                        <div class="code-block highlight">
+                            <button class="copy-button" onclick="copyCode(this, 'code3')">Copy</button>
+                            <pre id="code3"><span class="yaml-key">apiVersion:</span> <span class="yaml-string">inference.llm-d.ai/v1alpha1</span>
+<span class="yaml-key">kind:</span> <span class="yaml-string">LLMInferenceService</span>
+<span class="yaml-key">metadata:</span>
+  <span class="yaml-key">name:</span> <span class="yaml-string">llama-3-3-70b-fp8</span>
+  <span class="yaml-key">namespace:</span> <span class="yaml-string">llm-d</span>
+<span class="yaml-key">spec:</span>
+  <span class="yaml-key">modelArtifact:</span>
+    <span class="yaml-key">uri:</span> <span class="yaml-string">"oci://quay.io/llm-d/models:llama-3.3-70b-instruct-fp8-kv-int8"</span>
+  <span class="yaml-key">inferenceConfig:</span>
+    <span class="yaml-key">replicas:</span> <span class="yaml-number">2</span>
+    <span class="yaml-key">accelerator:</span>
+      <span class="yaml-key">type:</span> <span class="yaml-string">nvidia.com/gpu</span>
+      <span class="yaml-key">count:</span> <span class="yaml-number">4</span>
+      <span class="yaml-key">product:</span> <span class="yaml-string">H200</span>
+  <span class="yaml-key">prefill:</span>
+    <span class="yaml-key">replicas:</span> <span class="yaml-number">1</span>
+    <span class="yaml-key">accelerator:</span>
+      <span class="yaml-key">type:</span> <span class="yaml-string">nvidia.com/gpu</span>
+      <span class="yaml-key">count:</span> <span class="yaml-number">4</span>
+      <span class="yaml-key">product:</span> <span class="yaml-string">H200</span>
+  <span class="yaml-key">kvCacheTransfer:</span>
+    <span class="yaml-key">connector:</span> <span class="yaml-string">nixl</span>
+    <span class="yaml-key">transport:</span> <span class="yaml-string">rdma</span>
+  <span class="yaml-key">routing:</span>
+    <span class="yaml-key">strategy:</span> <span class="yaml-string">prefix-aware</span></pre>
+                        </div>
+                    </div>
+
+                    <div class="deployment-step">
+                        <div class="step-header">
+                            <div class="step-number">4</div>
+                            <h3 class="step-title">Configure Routing</h3>
+                        </div>
+                        <p class="step-description">
+                            Switch to disaggregated-prefill-decode routing strategy with KV-affinity for decode pods to maximize cache reuse.
+                        </p>
+                        <div class="code-block highlight">
+                            <button class="copy-button" onclick="copyCode(this, 'code4')">Copy</button>
+                            <pre id="code4"><span class="yaml-key">apiVersion:</span> <span class="yaml-string">inference.llm-d.ai/v1alpha1</span>
+<span class="yaml-key">kind:</span> <span class="yaml-string">LLMInferenceService</span>
+<span class="yaml-key">metadata:</span>
+  <span class="yaml-key">name:</span> <span class="yaml-string">llama-3-3-70b-fp8</span>
+  <span class="yaml-key">namespace:</span> <span class="yaml-string">llm-d</span>
+<span class="yaml-key">spec:</span>
+  <span class="yaml-key">modelArtifact:</span>
+    <span class="yaml-key">uri:</span> <span class="yaml-string">"oci://quay.io/llm-d/models:llama-3.3-70b-instruct-fp8-kv-int8"</span>
+  <span class="yaml-key">inferenceConfig:</span>
+    <span class="yaml-key">replicas:</span> <span class="yaml-number">2</span>
+    <span class="yaml-key">accelerator:</span>
+      <span class="yaml-key">type:</span> <span class="yaml-string">nvidia.com/gpu</span>
+      <span class="yaml-key">count:</span> <span class="yaml-number">4</span>
+      <span class="yaml-key">product:</span> <span class="yaml-string">H200</span>
+  <span class="yaml-key">prefill:</span>
+    <span class="yaml-key">replicas:</span> <span class="yaml-number">1</span>
+    <span class="yaml-key">accelerator:</span>
+      <span class="yaml-key">type:</span> <span class="yaml-string">nvidia.com/gpu</span>
+      <span class="yaml-key">count:</span> <span class="yaml-number">4</span>
+      <span class="yaml-key">product:</span> <span class="yaml-string">H200</span>
+  <span class="yaml-key">kvCacheTransfer:</span>
+    <span class="yaml-key">connector:</span> <span class="yaml-string">nixl</span>
+    <span class="yaml-key">transport:</span> <span class="yaml-string">rdma</span>
+  <span class="yaml-key">routing:</span>
+    <span class="yaml-key">strategy:</span> <span class="yaml-string">disaggregated-prefill-decode</span>
+    <span class="yaml-key">prefillRouting:</span>
+      <span class="yaml-key">loadBalancing:</span> <span class="yaml-string">least-load</span>
+    <span class="yaml-key">decodeRouting:</span>
+      <span class="yaml-key">loadBalancing:</span> <span class="yaml-string">kv-affinity</span></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="performance">
+            <div class="container">
+                <h2>Performance Impact</h2>
+                <div class="impact-cards">
+                    <div class="impact-card" data-fill="75">
+                        <h3 class="impact-title">Throughput</h3>
+                        <div class="impact-value">30-60%</div>
+                        <div class="impact-bar">
+                            <div class="impact-bar-fill" style="--fill-width: 75%;">
+                                Higher
+                            </div>
+                        </div>
+                        <p class="impact-description">
+                            Sustained throughput improves by 30-60% as dedicated pods eliminate phase interference and maximize hardware utilization.
+                        </p>
+                    </div>
+
+                    <div class="impact-card" data-fill="85">
+                        <h3 class="impact-title">TTFT Under Load</h3>
+                        <div class="impact-value">Consistent</div>
+                        <div class="impact-bar">
+                            <div class="impact-bar-fill" style="--fill-width: 85%;">
+                                Stable
+                            </div>
+                        </div>
+                        <p class="impact-description">
+                            Dedicated prefill pods maintain low TTFT even at high concurrency, preventing decode workloads from delaying prompt processing.
+                        </p>
+                    </div>
+
+                    <div class="impact-card" data-fill="90">
+                        <h3 class="impact-title">GPU Utilization</h3>
+                        <div class="impact-value">60% → 90%</div>
+                        <div class="impact-bar">
+                            <div class="impact-bar-fill" style="--fill-width: 90%;">
+                                Optimized
+                            </div>
+                        </div>
+                        <p class="impact-description">
+                            Higher efficiency on both pod types as each can be tuned for its specific workload characteristics — compute vs. memory bound.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-attribution">
+                    Markell Rawls · Developer Advocate · Red Hat
+                </div>
+                <div class="footer-links">
+                    <a href="https://markellr-redhat.github.io/llm-d-content-hub/">Content Hub</a>
+                    <a href="https://github.com/llm-d">GitHub</a>
+                    <a href="blog/index.html">Blog Post</a>
+                </div>
+                <div class="footer-info">
+                    llm-d is a CNCF Sandbox project for distributed LLM inference routing
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize prefill tokens
+        const prefillTokensContainer = document.getElementById('prefill-tokens');
+        for (let i = 0; i < 50; i++) {
+            const token = document.createElement('div');
+            token.className = 'token';
+            token.style.setProperty('--i', i);
+            prefillTokensContainer.appendChild(token);
+        }
+
+        // Initialize decode tokens
+        const decodeTokensContainer = document.getElementById('decode-tokens');
+        for (let i = 0; i < 8; i++) {
+            const token = document.createElement('div');
+            token.className = 'token-sequential';
+            token.style.animationDelay = `${i * 0.5}s`;
+            decodeTokensContainer.appendChild(token);
+        }
+
+        // Tab switching
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.dataset.tab;
+
+                tabs.forEach(t => t.classList.remove('active'));
+                tabContents.forEach(tc => tc.classList.remove('active'));
+
+                tab.classList.add('active');
+                document.getElementById(`${tabName}-content`).classList.add('active');
+            });
+        });
+
+        // Copy code functionality
+        function copyCode(button, codeId) {
+            const code = document.getElementById(codeId).textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                button.textContent = 'Copied!';
+                button.classList.add('copied');
+                setTimeout(() => {
+                    button.textContent = 'Copy';
+                    button.classList.remove('copied');
+                }, 2000);
+            });
+        }
+
+        // Chart.js configurations
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.borderColor = '#1e293b';
+        Chart.defaults.font.family = "'Red Hat Text', sans-serif";
+
+        // TTFT Chart
+        const ttftCtx = document.getElementById('ttft-chart').getContext('2d');
+        new Chart(ttftCtx, {
+            type: 'line',
+            data: {
+                labels: ['500', '1K', '4K', '8K', '16K', '32K'],
+                datasets: [{
+                    label: 'Cold/Uncached',
+                    data: [0.65, 0.24, 0.45, 0.93, 1.90, 4.74],
+                    borderColor: '#ef4444',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    borderWidth: 3,
+                    tension: 0.3,
+                    fill: true
+                }, {
+                    label: 'Cached',
+                    data: [0.16, 0.16, 0.16, 0.25, 0.19, 0.24],
+                    borderColor: '#2ec27e',
+                    backgroundColor: 'rgba(46, 194, 126, 0.1)',
+                    borderWidth: 3,
+                    tension: 0.3,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            color: '#e2e8f0',
+                            font: {
+                                size: 14,
+                                weight: 600
+                            }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: '#1a1a2e',
+                        borderColor: '#3b82f6',
+                        borderWidth: 1,
+                        titleColor: '#e2e8f0',
+                        bodyColor: '#94a3b8',
+                        padding: 12
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'TTFT (seconds)',
+                            color: '#e2e8f0',
+                            font: {
+                                size: 14,
+                                weight: 600
+                            }
+                        },
+                        grid: {
+                            color: '#1e293b'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Context Length (tokens)',
+                            color: '#e2e8f0',
+                            font: {
+                                size: 14,
+                                weight: 600
+                            }
+                        },
+                        grid: {
+                            color: '#1e293b'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Throughput Chart
+        const throughputCtx = document.getElementById('throughput-chart').getContext('2d');
+        new Chart(throughputCtx, {
+            type: 'bar',
+            data: {
+                labels: ['1', '5', '10', '50'],
+                datasets: [{
+                    label: 'Tokens/second',
+                    data: [45.5, 175.3, 359.8, 1483.4],
+                    backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                    borderColor: '#3b82f6',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            color: '#e2e8f0',
+                            font: {
+                                size: 14,
+                                weight: 600
+                            }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: '#1a1a2e',
+                        borderColor: '#3b82f6',
+                        borderWidth: 1,
+                        titleColor: '#e2e8f0',
+                        bodyColor: '#94a3b8',
+                        padding: 12
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Tokens/second',
+                            color: '#e2e8f0',
+                            font: {
+                                size: 14,
+                                weight: 600
+                            }
+                        },
+                        grid: {
+                            color: '#1e293b'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Concurrent Requests',
+                            color: '#e2e8f0',
+                            font: {
+                                size: 14,
+                                weight: 600
+                            }
+                        },
+                        grid: {
+                            color: '#1e293b'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Cache Reuse Chart
+        const cacheCtx = document.getElementById('cache-chart').getContext('2d');
+        new Chart(cacheCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Round-robin\nRouting', 'Cache-aware\nRouting (Cached)', 'Cache-aware\nRouting (Cold)'],
+                datasets: [{
+                    label: 'TTFT at 32K tokens (seconds)',
+                    data: [4.5, 0.24, 4.74],
+                    backgroundColor: [
+                        'rgba(239, 68, 68, 0.8)',
+                        'rgba(46, 194, 126, 0.8)',
+                        'rgba(155, 77, 155, 0.8)'
+                    ],
+                    borderColor: [
+                        '#ef4444',
+                        '#2ec27e',
+                        '#9b4d9b'
+                    ],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            color: '#e2e8f0',
+                            font: {
+                                size: 14,
+                                weight: 600
+                            }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: '#1a1a2e',
+                        borderColor: '#3b82f6',
+                        borderWidth: 1,
+                        titleColor: '#e2e8f0',
+                        bodyColor: '#94a3b8',
+                        padding: 12
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'TTFT (seconds)',
+                            color: '#e2e8f0',
+                            font: {
+                                size: 14,
+                                weight: 600
+                            }
+                        },
+                        grid: {
+                            color: '#1e293b'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            color: '#1e293b'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Intersection Observer for animations
+        const observerOptions = {
+            threshold: 0.3,
+            rootMargin: '0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.impact-card').forEach(card => {
+            observer.observe(card);
+        });
+    </script>
+</body>
+</html>
