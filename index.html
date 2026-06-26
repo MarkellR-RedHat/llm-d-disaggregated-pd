@@ -452,6 +452,470 @@
             #cluster-canvas { height:360px; }
             .hm-label { width:70px; font-size:.65rem; }
             .hm-time-labels { margin-left:73px; }
+            .wizard-grid { grid-template-columns:1fr !important; }
+            .whatif-slider-grid { grid-template-columns:1fr !important; }
+            .whatif-compare-grid { grid-template-columns:1fr !important; }
+        }
+
+        /* ============================================================
+           NEW: BUILD YOUR OWN P/D CONFIG WIZARD
+           ============================================================ */
+        .wizard-section { background: #0a0e17; }
+        .wizard-wrap {
+            background: #1a1a2e;
+            border: 2px solid transparent;
+            border-radius: 16px;
+            padding: 36px;
+            position: relative;
+            background-clip: padding-box;
+        }
+        .wizard-wrap::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: 18px;
+            background: linear-gradient(135deg, #3b82f6, #9b4d9b, #2ec27e);
+            z-index: -1;
+        }
+        .wizard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 36px;
+        }
+        .wizard-inputs h3 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 24px;
+            color: #e2e8f0;
+        }
+        .wizard-field { margin-bottom: 22px; }
+        .wizard-field label {
+            display: flex;
+            justify-content: space-between;
+            font-size: .9rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #cbd5e1;
+        }
+        .wizard-field label span:last-child {
+            color: #3b82f6;
+            font-family: 'Red Hat Display', sans-serif;
+            font-weight: 700;
+        }
+        .wizard-field select {
+            width: 100%;
+            padding: 10px 14px;
+            background: #080c15;
+            border: 1px solid #1e293b;
+            border-radius: 8px;
+            color: #e2e8f0;
+            font-size: .95rem;
+            font-family: 'Red Hat Text', sans-serif;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2394a3b8' stroke-width='2' fill='none'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+        }
+        .wizard-field select:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+        .wizard-results { display: flex; flex-direction: column; }
+        .wizard-results h3 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 24px;
+            color: #e2e8f0;
+        }
+        .wizard-metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .wizard-metric {
+            background: #080c15;
+            border: 1px solid #1e293b;
+            border-radius: 10px;
+            padding: 14px;
+            text-align: center;
+        }
+        .wizard-metric-val {
+            font-size: 1.4rem;
+            font-weight: 700;
+            font-family: 'Red Hat Display', sans-serif;
+            color: #3b82f6;
+        }
+        .wizard-metric-label {
+            font-size: .78rem;
+            color: #94a3b8;
+            margin-top: 2px;
+        }
+        .wizard-verdict {
+            background: rgba(46,194,126,.08);
+            border: 1px solid rgba(46,194,126,.2);
+            border-radius: 10px;
+            padding: 14px 18px;
+            margin-bottom: 16px;
+        }
+        .wizard-verdict.not-worth {
+            background: rgba(239,68,68,.08);
+            border-color: rgba(239,68,68,.2);
+        }
+        .wizard-verdict-title {
+            font-weight: 700;
+            font-size: .95rem;
+            margin-bottom: 4px;
+        }
+        .wizard-verdict-desc {
+            font-size: .85rem;
+            color: #94a3b8;
+            line-height: 1.5;
+        }
+        .wizard-yaml-wrap {
+            background: #080c15;
+            border: 1px solid #1e293b;
+            border-radius: 10px;
+            padding: 16px;
+            position: relative;
+            overflow-x: auto;
+            flex: 1;
+        }
+        .wizard-yaml-wrap pre {
+            font-size: .82rem;
+            line-height: 1.5;
+        }
+
+        /* ============================================================
+           NEW: GPU MEMORY VISUALIZATION
+           ============================================================ */
+        .gpumem-section { background: #0d1220; }
+        #gpumem-canvas {
+            width: 100%;
+            height: 420px;
+            display: block;
+            border-radius: 14px;
+            background: #0d1220;
+            border: 1px solid #1e293b;
+        }
+        .gpumem-legend {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+        .gpumem-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: .85rem;
+            color: #94a3b8;
+        }
+        .gpumem-legend-swatch {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+        }
+
+        /* ============================================================
+           NEW: WHAT-IF ANALYZER
+           ============================================================ */
+        .whatif-section { background: #0a0e17; }
+        .whatif-wrap {
+            background: #1a1a2e;
+            border: 1px solid #1e293b;
+            border-radius: 14px;
+            padding: 36px;
+        }
+        .whatif-slider-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+        .whatif-slider-wrap { }
+        .whatif-slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: .9rem;
+        }
+        .whatif-slider-label span:last-child {
+            color: #3b82f6;
+            font-family: 'Red Hat Display', sans-serif;
+            font-weight: 700;
+        }
+        .whatif-results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 14px;
+            margin-bottom: 28px;
+        }
+        .whatif-result-card {
+            background: #080c15;
+            border: 1px solid #1e293b;
+            border-radius: 10px;
+            padding: 16px;
+            text-align: center;
+        }
+        .whatif-result-val {
+            font-size: 1.5rem;
+            font-weight: 700;
+            font-family: 'Red Hat Display', sans-serif;
+            color: #3b82f6;
+        }
+        .whatif-result-label {
+            font-size: .78rem;
+            color: #94a3b8;
+            margin-top: 4px;
+        }
+        .whatif-chart-area {
+            display: flex;
+            align-items: center;
+            gap: 28px;
+            flex-wrap: wrap;
+        }
+        .whatif-radar-wrap {
+            flex: 1;
+            min-width: 260px;
+        }
+        #whatif-radar {
+            width: 100%;
+            height: 280px;
+            display: block;
+        }
+        .whatif-compare-area {
+            flex: 1;
+            min-width: 260px;
+        }
+        .whatif-compare-btn {
+            display: block;
+            margin: 0 auto 16px;
+            padding: 12px 28px;
+            border: 2px solid #3b82f6;
+            border-radius: 10px;
+            background: transparent;
+            color: #3b82f6;
+            font-size: .95rem;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: 'Red Hat Text', sans-serif;
+            transition: all .2s;
+        }
+        .whatif-compare-btn:hover {
+            background: rgba(59,130,246,.1);
+        }
+        .whatif-compare-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .whatif-compare-col {
+            background: #080c15;
+            border: 1px solid #1e293b;
+            border-radius: 10px;
+            padding: 16px;
+        }
+        .whatif-compare-col h5 {
+            font-size: .85rem;
+            color: #94a3b8;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .whatif-compare-col.current h5 { color: #3b82f6; }
+        .whatif-compare-col.saved h5 { color: #9b4d9b; }
+        .whatif-compare-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            font-size: .82rem;
+            border-bottom: 1px solid rgba(30,41,59,.5);
+        }
+        .whatif-compare-row:last-child { border-bottom: none; }
+        .whatif-compare-row span:first-child { color: #94a3b8; }
+        .whatif-compare-row span:last-child { font-weight: 600; color: #e2e8f0; }
+
+        /* ============================================================
+           NEW: BENCHMARK LATENCY DISTRIBUTION TAB
+           ============================================================ */
+        .bench-latency-legend {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+        .bench-latency-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: .82rem;
+            color: #94a3b8;
+        }
+        .bench-latency-legend-swatch {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+
+        /* Benchmark zoom modal */
+        .bench-zoom-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.8);
+            z-index: 500;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+        .bench-zoom-overlay.visible { display: flex; }
+        .bench-zoom-inner {
+            background: #1a1a2e;
+            border: 1px solid #3b82f6;
+            border-radius: 14px;
+            padding: 32px;
+            max-width: 700px;
+            width: 100%;
+            position: relative;
+        }
+        .bench-zoom-close {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 1.5rem;
+            cursor: pointer;
+            font-family: 'Red Hat Text', sans-serif;
+        }
+        .bench-zoom-close:hover { color: #e2e8f0; }
+        .bench-zoom-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: #e2e8f0;
+        }
+        .bench-zoom-detail {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .bench-zoom-stat {
+            background: #080c15;
+            border-radius: 8px;
+            padding: 14px;
+            text-align: center;
+        }
+        .bench-zoom-stat-val {
+            font-size: 1.6rem;
+            font-weight: 700;
+            font-family: 'Red Hat Display', sans-serif;
+            color: #3b82f6;
+        }
+        .bench-zoom-stat-label {
+            font-size: .78rem;
+            color: #94a3b8;
+            margin-top: 4px;
+        }
+        .bench-zoom-context {
+            color: #94a3b8;
+            font-size: .9rem;
+            line-height: 1.6;
+        }
+
+        /* ============================================================
+           NEW: KEYBOARD SHORTCUTS PANEL
+           ============================================================ */
+        .kb-fab {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #3b82f6;
+            border: none;
+            color: #fff;
+            font-size: 1.5rem;
+            font-weight: 700;
+            cursor: pointer;
+            z-index: 300;
+            box-shadow: 0 4px 20px rgba(59,130,246,.4);
+            transition: transform .2s, box-shadow .2s;
+            font-family: 'Red Hat Display', sans-serif;
+        }
+        .kb-fab:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 28px rgba(59,130,246,.5);
+        }
+        .kb-panel {
+            display: none;
+            position: fixed;
+            bottom: 84px;
+            right: 24px;
+            width: 320px;
+            background: #1a1a2e;
+            border: 1px solid #3b82f6;
+            border-radius: 14px;
+            padding: 24px;
+            z-index: 300;
+            box-shadow: 0 8px 40px rgba(0,0,0,.5);
+        }
+        .kb-panel.visible { display: block; }
+        .kb-panel h4 {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: #e2e8f0;
+        }
+        .kb-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(30,41,59,.5);
+        }
+        .kb-row:last-child { border-bottom: none; }
+        .kb-row-desc {
+            font-size: .85rem;
+            color: #94a3b8;
+        }
+        .kb-key {
+            display: inline-block;
+            background: #080c15;
+            border: 1px solid #1e293b;
+            border-radius: 4px;
+            padding: 2px 8px;
+            font-size: .78rem;
+            font-weight: 600;
+            color: #e2e8f0;
+            font-family: 'Monaco', 'Menlo', monospace;
+        }
+        .kb-toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: #2ec27e;
+            color: #fff;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: .9rem;
+            z-index: 400;
+            opacity: 0;
+            transition: transform .3s, opacity .3s;
+            pointer-events: none;
+        }
+        .kb-toast.visible {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
         }
     </style>
 </head>
@@ -485,7 +949,7 @@
             <div class="hero-stat hero-stat-featured">
                 <div class="hero-stat-val" style="color:#1a5fb4">19.8x</div>
                 <div class="hero-stat-label">TTFT Improvement</div>
-                <div class="hero-stat-desc">32K context with KV cache reuse &mdash; the single biggest latency win in this benchmark</div>
+                <div class="hero-stat-desc">32K context with KV cache reuse -- the single biggest latency win in this benchmark</div>
             </div>
             <div class="hero-stat">
                 <div class="hero-stat-val" style="color:#2ec27e">1,483</div>
@@ -520,8 +984,49 @@
 <section class="cluster-section">
     <div class="container">
         <h2 class="section-title">What's Happening Inside the Cluster</h2>
-        <p class="section-subtitle">Prefill pods process prompts, transfer KV caches via RDMA, and decode pods generate tokens &mdash; all running simultaneously. Move the load slider below to stress it.</p>
+        <p class="section-subtitle">Prefill pods process prompts, transfer KV caches via RDMA, and decode pods generate tokens -- all running simultaneously. Move the load slider below to stress it.</p>
         <canvas id="cluster-canvas"></canvas>
+    </div>
+</section>
+
+<!-- ====== C. ANIMATED GPU MEMORY VISUALIZATION ====== -->
+<section class="gpumem-section">
+    <div class="container">
+        <h2 class="section-title">GPU Memory Layout</h2>
+        <p class="section-subtitle">See how prefill and decode GPUs partition memory, and how KV cache blocks transfer through the NixL/RDMA pipeline in real time.</p>
+        <canvas id="gpumem-canvas"></canvas>
+        <div class="gpumem-legend">
+            <div class="gpumem-legend-item">
+                <div class="gpumem-legend-swatch" style="background:#1a5fb4"></div>
+                Model Weights (Prefill)
+            </div>
+            <div class="gpumem-legend-item">
+                <div class="gpumem-legend-swatch" style="background:#9b4d9b"></div>
+                KV Cache
+            </div>
+            <div class="gpumem-legend-item">
+                <div class="gpumem-legend-swatch" style="background:#2ec27e"></div>
+                Model Weights (Decode)
+            </div>
+            <div class="gpumem-legend-item">
+                <div class="gpumem-legend-swatch" style="background:#1e293b"></div>
+                Free Memory
+            </div>
+        </div>
+        <div class="gpumem-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-top:20px;">
+            <div class="sim-metric">
+                <div class="sim-metric-val" id="gpumem-cache-size" style="color:#9b4d9b">12.4 GB</div>
+                <div class="sim-metric-label">KV Cache Size</div>
+            </div>
+            <div class="sim-metric">
+                <div class="sim-metric-val" id="gpumem-transfer-time" style="color:#3b82f6">0.8 ms</div>
+                <div class="sim-metric-label">Transfer Time</div>
+            </div>
+            <div class="sim-metric">
+                <div class="sim-metric-val" id="gpumem-bandwidth" style="color:#2ec27e">92%</div>
+                <div class="sim-metric-label">Bandwidth Utilization</div>
+            </div>
+        </div>
     </div>
 </section>
 
@@ -626,6 +1131,7 @@
             <button class="bench-tab active" data-tab="bench-ttft">TTFT by Context Length</button>
             <button class="bench-tab" data-tab="bench-tput">Throughput Scaling</button>
             <button class="bench-tab" data-tab="bench-cache">Cache Reuse Impact</button>
+            <button class="bench-tab" data-tab="bench-latency">P50/P95/P99</button>
         </div>
 
         <div class="bench-panel active" id="bench-ttft">
@@ -635,7 +1141,7 @@
             </div>
             <div class="bench-insight">
                 <h4>Why This Matters</h4>
-                <p>At 32K tokens, cached TTFT is 19.8x faster than cold &mdash; dropping from 4.74s to 0.24s. Prefix caching combined with intelligent routing delivers transformative latency improvements at scale.</p>
+                <p>At 32K tokens, cached TTFT is 19.8x faster than cold -- dropping from 4.74s to 0.24s. Prefix caching combined with intelligent routing delivers transformative latency improvements at scale.</p>
             </div>
         </div>
 
@@ -660,6 +1166,31 @@
                 <p>Without cache-aware routing, requests scatter across pods and cache hit rate drops to near zero. Intelligent routing is essential to realize the full benefit of prefix caching.</p>
             </div>
         </div>
+        <div class="bench-panel" id="bench-latency">
+            <div class="bench-chart-wrap">
+                <canvas class="bench-canvas" id="chart-latency"></canvas>
+                <div class="bench-tooltip" id="tt-latency"></div>
+            </div>
+            <div class="bench-latency-legend">
+                <div class="bench-latency-legend-item">
+                    <div class="bench-latency-legend-swatch" style="background:#3b82f6"></div>
+                    P50
+                </div>
+                <div class="bench-latency-legend-item">
+                    <div class="bench-latency-legend-swatch" style="background:#f59e0b"></div>
+                    P95
+                </div>
+                <div class="bench-latency-legend-item">
+                    <div class="bench-latency-legend-swatch" style="background:#ef4444"></div>
+                    P99
+                </div>
+            </div>
+            <div class="bench-insight">
+                <h4>Tail Latency Matters</h4>
+                <p>At 32K context, P99 TTFT is 0.60s with disaggregation and caching -- compared to nearly 12s without it. The tail latency improvement is where disaggregation really shines for production SLOs.</p>
+            </div>
+        </div>
+
     </div>
 </section>
 
@@ -953,11 +1484,166 @@
                 <div class="impact-bar-track">
                     <div class="impact-bar-fill">Optimized</div>
                 </div>
-                <p class="impact-desc">Higher efficiency on both pod types as each is tuned for its workload &mdash; compute-bound prefill and memory-bound decode.</p>
+                <p class="impact-desc">Higher efficiency on both pod types as each is tuned for its workload -- compute-bound prefill and memory-bound decode.</p>
             </div>
         </div>
     </div>
 </section>
+
+<!-- ====== A. BUILD YOUR OWN P/D CONFIG WIZARD ====== -->
+<section class="wizard-section" id="wizard-section">
+    <div class="container">
+        <h2 class="section-title">Build Your Own P/D Config</h2>
+        <p class="section-subtitle">Dial in your workload parameters and get a recommended disaggregated configuration with generated YAML.</p>
+        <div class="wizard-wrap">
+            <div class="wizard-grid">
+                <div class="wizard-inputs">
+                    <h3>Workload Parameters</h3>
+                    <div class="wizard-field">
+                        <label>
+                            <span>Batch Size</span>
+                            <span id="wizard-batch-val">32</span>
+                        </label>
+                        <input type="range" id="wizard-batch" min="1" max="256" value="32">
+                    </div>
+                    <div class="wizard-field">
+                        <label>
+                            <span>Average Context Length</span>
+                            <span id="wizard-ctx-val">4K</span>
+                        </label>
+                        <input type="range" id="wizard-ctx" min="0" max="7" value="2">
+                        <div style="display:flex;justify-content:space-between;font-size:.7rem;color:#64748b;margin-top:4px;">
+                            <span>512</span><span>1K</span><span>4K</span><span>8K</span><span>16K</span><span>32K</span><span>64K</span><span>128K</span>
+                        </div>
+                    </div>
+                    <div class="wizard-field">
+                        <label><span>TTFT SLO Target</span></label>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;" id="wizard-slo-btns">
+                            <button class="wizard-slo-btn" data-slo="100" style="padding:8px 16px;border-radius:8px;border:1px solid #1e293b;background:#080c15;color:#94a3b8;cursor:pointer;font-family:'Red Hat Text',sans-serif;font-weight:600;font-size:.9rem;transition:all .2s;">100ms</button>
+                            <button class="wizard-slo-btn active" data-slo="250" style="padding:8px 16px;border-radius:8px;border:1px solid #3b82f6;background:rgba(59,130,246,.15);color:#3b82f6;cursor:pointer;font-family:'Red Hat Text',sans-serif;font-weight:600;font-size:.9rem;transition:all .2s;">250ms</button>
+                            <button class="wizard-slo-btn" data-slo="500" style="padding:8px 16px;border-radius:8px;border:1px solid #1e293b;background:#080c15;color:#94a3b8;cursor:pointer;font-family:'Red Hat Text',sans-serif;font-weight:600;font-size:.9rem;transition:all .2s;">500ms</button>
+                            <button class="wizard-slo-btn" data-slo="1000" style="padding:8px 16px;border-radius:8px;border:1px solid #1e293b;background:#080c15;color:#94a3b8;cursor:pointer;font-family:'Red Hat Text',sans-serif;font-weight:600;font-size:.9rem;transition:all .2s;">1s</button>
+                            <button class="wizard-slo-btn" data-slo="2000" style="padding:8px 16px;border-radius:8px;border:1px solid #1e293b;background:#080c15;color:#94a3b8;cursor:pointer;font-family:'Red Hat Text',sans-serif;font-weight:600;font-size:.9rem;transition:all .2s;">2s</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="wizard-results">
+                    <h3>Recommended Configuration</h3>
+                    <div class="wizard-verdict" id="wizard-verdict">
+                        <div class="wizard-verdict-title" id="wizard-verdict-title">Disaggregation Recommended</div>
+                        <div class="wizard-verdict-desc" id="wizard-verdict-desc">With 4K context and batch size 32, splitting prefill and decode yields meaningful TTFT improvement.</div>
+                    </div>
+                    <div class="wizard-metrics-grid">
+                        <div class="wizard-metric">
+                            <div class="wizard-metric-val" id="wizard-ratio">1:2</div>
+                            <div class="wizard-metric-label">Prefill:Decode Ratio</div>
+                        </div>
+                        <div class="wizard-metric">
+                            <div class="wizard-metric-val" id="wizard-ttft">0.18s</div>
+                            <div class="wizard-metric-label">Estimated TTFT</div>
+                        </div>
+                        <div class="wizard-metric">
+                            <div class="wizard-metric-val" id="wizard-prefill-pods">1</div>
+                            <div class="wizard-metric-label">Prefill Pods</div>
+                        </div>
+                        <div class="wizard-metric">
+                            <div class="wizard-metric-val" id="wizard-decode-pods">2</div>
+                            <div class="wizard-metric-label">Decode Pods</div>
+                        </div>
+                    </div>
+                    <div class="wizard-yaml-wrap">
+                        <button class="copy-btn" onclick="copyCode(this)">Grab this YAML</button>
+                        <pre id="wizard-yaml"></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ====== B. WHAT-IF ANALYZER ====== -->
+<section class="whatif-section" id="whatif-section">
+    <div class="container">
+        <h2 class="section-title">What-If Analyzer</h2>
+        <p class="section-subtitle">Tweak infrastructure parameters and see projected metrics update in real time.</p>
+        <div class="whatif-wrap">
+            <div class="whatif-slider-grid">
+                <div class="whatif-slider-wrap">
+                    <div class="whatif-slider-label">
+                        <span>Prefill Workers</span>
+                        <span id="whatif-pw-val">2</span>
+                    </div>
+                    <input type="range" id="whatif-pw" min="1" max="8" value="2">
+                </div>
+                <div class="whatif-slider-wrap">
+                    <div class="whatif-slider-label">
+                        <span>Decode Workers</span>
+                        <span id="whatif-dw-val">4</span>
+                    </div>
+                    <input type="range" id="whatif-dw" min="1" max="16" value="4">
+                </div>
+                <div class="whatif-slider-wrap">
+                    <div class="whatif-slider-label">
+                        <span>Context Length</span>
+                        <span id="whatif-ctx-val">4K</span>
+                    </div>
+                    <input type="range" id="whatif-ctx" min="0" max="7" value="2">
+                </div>
+                <div class="whatif-slider-wrap">
+                    <div class="whatif-slider-label">
+                        <span>Batch Size</span>
+                        <span id="whatif-bs-val">32</span>
+                    </div>
+                    <input type="range" id="whatif-bs" min="1" max="256" value="32">
+                </div>
+            </div>
+            <div class="whatif-results-grid" id="whatif-results-grid">
+                <!-- Filled by JS -->
+            </div>
+            <div class="whatif-chart-area">
+                <div class="whatif-radar-wrap">
+                    <canvas id="whatif-radar"></canvas>
+                </div>
+                <div class="whatif-compare-area">
+                    <button class="whatif-compare-btn" id="whatif-save-btn">Save Current Config</button>
+                    <div class="whatif-compare-grid" id="whatif-compare-grid" style="display:none;">
+                        <div class="whatif-compare-col current" id="whatif-compare-current">
+                            <h5>Current</h5>
+                        </div>
+                        <div class="whatif-compare-col saved" id="whatif-compare-saved">
+                            <h5>Saved</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ====== D. KEYBOARD SHORTCUTS PANEL ====== -->
+<button class="kb-fab" id="kb-fab" title="Keyboard Shortcuts">?</button>
+<div class="kb-panel" id="kb-panel">
+    <h4>Keyboard Shortcuts</h4>
+    <div class="kb-row"><span class="kb-row-desc">Jump to sections</span><span class="kb-key">1</span> - <span class="kb-key">9</span></div>
+    <div class="kb-row"><span class="kb-row-desc">Next section</span><span class="kb-key">Space</span></div>
+    <div class="kb-row"><span class="kb-row-desc">Previous section</span><span class="kb-key">Shift+Space</span></div>
+    <div class="kb-row"><span class="kb-row-desc">Reset all sliders</span><span class="kb-key">R</span></div>
+    <div class="kb-row"><span class="kb-row-desc">Toggle dark/light</span><span class="kb-key">D</span></div>
+    <div class="kb-row"><span class="kb-row-desc">Snapshot to clipboard</span><span class="kb-key">S</span></div>
+    <div class="kb-row"><span class="kb-row-desc">Toggle this panel</span><span class="kb-key">?</span></div>
+    <div class="kb-row"><span class="kb-row-desc">Close panels</span><span class="kb-key">Esc</span></div>
+</div>
+<div class="kb-toast" id="kb-toast"></div>
+
+<!-- ====== BENCHMARK ZOOM OVERLAY ====== -->
+<div class="bench-zoom-overlay" id="bench-zoom-overlay">
+    <div class="bench-zoom-inner">
+        <button class="bench-zoom-close" id="bench-zoom-close">&times;</button>
+        <div class="bench-zoom-title" id="bench-zoom-title"></div>
+        <div class="bench-zoom-detail" id="bench-zoom-detail"></div>
+        <div class="bench-zoom-context" id="bench-zoom-context"></div>
+    </div>
+</div>
 
 <!-- ====== FOOTER ====== -->
 <footer>
@@ -1952,6 +2638,130 @@ function clamp(v,lo,hi){ return Math.max(lo,Math.min(hi,v)); }
         draw();
     })();
 
+    // ---- Latency Distribution Grouped Bar Chart ----
+    (function(){
+        const canvas = document.getElementById('chart-latency');
+        if(!canvas) return;
+        const tooltip = document.getElementById('tt-latency');
+
+        const labels = ['500', '1K', '4K', '8K', '16K', '32K'];
+        const p50 = [0.14, 0.14, 0.15, 0.22, 0.17, 0.21];
+        const p95 = [0.21, 0.22, 0.24, 0.34, 0.26, 0.32];
+        const p99 = [0.35, 0.36, 0.40, 0.56, 0.43, 0.60];
+        const maxY = 0.8;
+        const colors = ['#3b82f6', '#f59e0b', '#ef4444'];
+        const datasets = [p50, p95, p99];
+
+        animatedCharts['bench-latency'] = {progress:0};
+        chartObserver.observe(canvas);
+
+        function draw(){
+            const p = animatedCharts['bench-latency'];
+            p.progress = Math.min(1, p.progress + 0.015);
+            const t = easeOutCubic(p.progress);
+
+            const rect = canvas.parentElement.getBoundingClientRect();
+            const W = rect.width - 56;
+            const H = 380;
+            const ctx = sizeCanvas(canvas, W, H);
+
+            const pad = {top:30, right:30, bottom:50, left:65};
+            const cw = W - pad.left - pad.right;
+            const ch = H - pad.top - pad.bottom;
+
+            // Grid
+            ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 1;
+            [0, 0.2, 0.4, 0.6, 0.8].forEach(v=>{
+                const y = pad.top + ch - (v/maxY)*ch;
+                ctx.beginPath(); ctx.moveTo(pad.left,y); ctx.lineTo(pad.left+cw,y); ctx.stroke();
+                ctx.fillStyle='#94a3b8'; ctx.font='500 11px Red Hat Text, sans-serif';
+                ctx.textAlign='right'; ctx.fillText(v.toFixed(1)+'s', pad.left-10, y+4);
+            });
+
+            // Axis labels
+            ctx.save();
+            ctx.translate(16, pad.top+ch/2);
+            ctx.rotate(-Math.PI/2);
+            ctx.fillStyle='#e2e8f0'; ctx.font='600 12px Red Hat Text, sans-serif';
+            ctx.textAlign='center'; ctx.fillText('TTFT (seconds)', 0, 0);
+            ctx.restore();
+
+            ctx.fillStyle='#e2e8f0'; ctx.font='600 12px Red Hat Text, sans-serif';
+            ctx.textAlign='center'; ctx.fillText('Context Length (tokens)', pad.left+cw/2, H-6);
+
+            // Grouped bars
+            const groupW = cw / labels.length;
+            const barW = groupW * 0.22;
+            const barGap = groupW * 0.04;
+
+            labels.forEach((l, i)=>{
+                const groupX = pad.left + i * groupW + groupW * 0.15;
+
+                datasets.forEach((data, di)=>{
+                    const x = groupX + di * (barW + barGap);
+                    const barH = (data[i] / maxY) * ch * t;
+                    const y = pad.top + ch - barH;
+
+                    const grad = ctx.createLinearGradient(x, y, x, pad.top+ch);
+                    grad.addColorStop(0, colors[di]);
+                    grad.addColorStop(1, colors[di] + '66');
+                    ctx.fillStyle = grad;
+
+                    const r = 4;
+                    if(barH > r*2){
+                        ctx.beginPath();
+                        ctx.moveTo(x+r,y); ctx.lineTo(x+barW-r,y);
+                        ctx.quadraticCurveTo(x+barW,y,x+barW,y+r);
+                        ctx.lineTo(x+barW,y+barH); ctx.lineTo(x,y+barH);
+                        ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y);
+                        ctx.closePath(); ctx.fill();
+                    } else if(barH > 0){
+                        ctx.fillRect(x, y, barW, barH);
+                    }
+
+                    // Value label
+                    if(t > 0.85){
+                        const a = (t-0.85)/0.15;
+                        ctx.fillStyle = `rgba(226,232,240,${a})`;
+                        ctx.font = '600 9px Red Hat Display, sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(data[i].toFixed(2), x+barW/2, y-6);
+                    }
+                });
+
+                // X label
+                ctx.fillStyle='#94a3b8'; ctx.font='500 11px Red Hat Text, sans-serif';
+                ctx.textAlign='center';
+                ctx.fillText(l, pad.left + i*groupW + groupW/2, H-pad.bottom+20);
+            });
+
+            requestAnimationFrame(draw);
+        }
+
+        // Tooltip
+        canvas.addEventListener('mousemove', function(e){
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const W = canvas.clientWidth;
+            const padObj = {left:65, right:30};
+            const cw2 = W - padObj.left - padObj.right;
+            const gw = cw2 / labels.length;
+            const idx = Math.floor((mx - padObj.left) / gw);
+            if(idx >= 0 && idx < labels.length){
+                tooltip.style.opacity='1';
+                tooltip.style.left = (padObj.left + idx*gw + gw/2 + 10)+'px';
+                tooltip.style.top = '40px';
+                tooltip.innerHTML = '<div class="tt-title">' + labels[idx] + ' tokens</div>'
+                    + '<div class="tt-val" style="color:#3b82f6">P50: ' + p50[idx] + 's</div>'
+                    + '<div class="tt-val" style="color:#f59e0b">P95: ' + p95[idx] + 's</div>'
+                    + '<div class="tt-val" style="color:#ef4444">P99: ' + p99[idx] + 's</div>';
+            }
+        });
+        canvas.addEventListener('mouseleave', ()=>{ tooltip.style.opacity='0'; });
+
+        draw();
+    })();
+
     function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
 })();
 
@@ -2166,6 +2976,850 @@ window.copyCode = function(button){
         });
     }, {threshold:0.3});
     document.querySelectorAll('.impact-card').forEach(card=>observer.observe(card));
+})();
+
+/* ============================================================
+   C. ANIMATED GPU MEMORY VISUALIZATION
+   ============================================================ */
+(function gpuMemViz(){
+    const canvas = document.getElementById('gpumem-canvas');
+    if(!canvas) return;
+    let W, H, ctx;
+    function resize(){
+        const rect = canvas.parentElement.getBoundingClientRect();
+        W = rect.width;
+        H = parseInt(canvas.style.height) || 420;
+        ctx = sizeCanvas(canvas, W, H);
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    let kvFill = 0;
+
+    function draw(){
+        const t = performance.now() / 1000;
+        ctx.clearRect(0, 0, W, H);
+
+        const gpuW = Math.min(220, W * 0.25);
+        const gpuH = 300;
+        const gpuY = 40;
+        const gap = Math.min(200, W * 0.2);
+        const leftX = W/2 - gap/2 - gpuW;
+        const rightX = W/2 + gap/2;
+        const pipeY = gpuY + gpuH/2 - 15;
+        const pipeH = 30;
+
+        const weightsH = gpuH * 0.35;
+        const kvMaxH = gpuH * 0.45;
+        const kvGrowth = (Math.sin(t * 0.5) + 1) / 2;
+        const kvH = kvMaxH * (0.3 + 0.7 * kvGrowth);
+        const freeH = gpuH - weightsH - kvH;
+
+        // Prefill GPU outline
+        ctx.strokeStyle = '#3b82f6';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(leftX, gpuY, gpuW, gpuH);
+        ctx.fillStyle = '#e2e8f0';
+        ctx.font = '700 14px Red Hat Display, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Prefill GPU', leftX + gpuW/2, gpuY - 12);
+
+        // Free memory (top)
+        ctx.fillStyle = '#0d1220';
+        ctx.fillRect(leftX, gpuY, gpuW, freeH);
+        if(freeH > 20){
+            ctx.fillStyle = '#64748b';
+            ctx.font = '500 10px Red Hat Text, sans-serif';
+            ctx.fillText('Free', leftX + gpuW/2, gpuY + freeH/2 + 4);
+        }
+
+        // KV Cache (animated)
+        const kvGrad = ctx.createLinearGradient(leftX, gpuY + freeH, leftX, gpuY + freeH + kvH);
+        kvGrad.addColorStop(0, '#7c3aed');
+        kvGrad.addColorStop(1, '#9b4d9b');
+        ctx.fillStyle = kvGrad;
+        ctx.fillRect(leftX, gpuY + freeH, gpuW, kvH);
+        ctx.fillStyle = '#fff';
+        ctx.font = '600 11px Red Hat Text, sans-serif';
+        ctx.fillText('KV Cache', leftX + gpuW/2, gpuY + freeH + kvH/2 + 4);
+        const scanY = gpuY + freeH + (kvH * ((t * 0.3) % 1));
+        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        ctx.fillRect(leftX, scanY, gpuW, 2);
+
+        // Model Weights (bottom)
+        const weightsGrad = ctx.createLinearGradient(leftX, gpuY + gpuH - weightsH, leftX, gpuY + gpuH);
+        weightsGrad.addColorStop(0, '#1a5fb4');
+        weightsGrad.addColorStop(1, '#0d3b82');
+        ctx.fillStyle = weightsGrad;
+        ctx.fillRect(leftX, gpuY + gpuH - weightsH, gpuW, weightsH);
+        ctx.fillStyle = '#fff';
+        ctx.font = '600 11px Red Hat Text, sans-serif';
+        ctx.fillText('Model Weights', leftX + gpuW/2, gpuY + gpuH - weightsH/2 + 4);
+
+        // Decode GPU
+        ctx.strokeStyle = '#2ec27e';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(rightX, gpuY, gpuW, gpuH);
+        ctx.fillStyle = '#e2e8f0';
+        ctx.font = '700 14px Red Hat Display, sans-serif';
+        ctx.fillText('Decode GPU', rightX + gpuW/2, gpuY - 12);
+
+        const dWeightsH = gpuH * 0.35;
+        const dKvMaxH = gpuH * 0.45;
+        kvFill = lerp(kvFill, kvGrowth * 0.85, 0.02);
+        const dKvH = dKvMaxH * kvFill;
+        const dFreeH = gpuH - dWeightsH - dKvMaxH;
+        const dEmptyKvH = dKvMaxH - dKvH;
+
+        ctx.fillStyle = '#0d1220';
+        ctx.fillRect(rightX, gpuY, gpuW, dFreeH);
+        if(dFreeH > 20){
+            ctx.fillStyle = '#64748b';
+            ctx.font = '500 10px Red Hat Text, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Free', rightX + gpuW/2, gpuY + dFreeH/2 + 4);
+        }
+
+        ctx.strokeStyle = 'rgba(155,77,155,0.4)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.strokeRect(rightX, gpuY + dFreeH, gpuW, dKvMaxH);
+        ctx.setLineDash([]);
+
+        if(dKvH > 0){
+            const dKvGrad = ctx.createLinearGradient(rightX, gpuY + dFreeH + dEmptyKvH, rightX, gpuY + dFreeH + dKvMaxH);
+            dKvGrad.addColorStop(0, '#7c3aed');
+            dKvGrad.addColorStop(1, '#9b4d9b');
+            ctx.fillStyle = dKvGrad;
+            ctx.fillRect(rightX, gpuY + dFreeH + dEmptyKvH, gpuW, dKvH);
+        }
+        ctx.fillStyle = '#fff';
+        ctx.font = '600 11px Red Hat Text, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('KV Cache', rightX + gpuW/2, gpuY + dFreeH + dKvMaxH/2 + 4);
+
+        const dWeightsGrad = ctx.createLinearGradient(rightX, gpuY + gpuH - dWeightsH, rightX, gpuY + gpuH);
+        dWeightsGrad.addColorStop(0, '#2ec27e');
+        dWeightsGrad.addColorStop(1, '#1a8c5a');
+        ctx.fillStyle = dWeightsGrad;
+        ctx.fillRect(rightX, gpuY + gpuH - dWeightsH, gpuW, dWeightsH);
+        ctx.fillStyle = '#fff';
+        ctx.font = '600 11px Red Hat Text, sans-serif';
+        ctx.fillText('Model Weights', rightX + gpuW/2, gpuY + gpuH - dWeightsH/2 + 4);
+
+        // NixL/RDMA Pipeline
+        const pipeX1 = leftX + gpuW + 8;
+        const pipeX2 = rightX - 8;
+        const pipeMidX = (pipeX1 + pipeX2) / 2;
+
+        ctx.fillStyle = 'rgba(155,77,155,0.08)';
+        ctx.fillRect(pipeX1, pipeY, pipeX2 - pipeX1, pipeH);
+
+        ctx.strokeStyle = 'rgba(155,77,155,0.4)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(pipeX1, pipeY); ctx.lineTo(pipeX2, pipeY);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(pipeX1, pipeY + pipeH); ctx.lineTo(pipeX2, pipeY + pipeH);
+        ctx.stroke();
+
+        ctx.fillStyle = '#9b4d9b';
+        ctx.font = '700 10px Red Hat Display, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('NixL / RDMA Pipeline', pipeMidX, pipeY - 6);
+
+        // Animated data blocks
+        const blockCount = 5;
+        for(let i = 0; i < blockCount; i++){
+            const blockT = ((t * 0.4 + i * (1/blockCount)) % 1);
+            const bx = pipeX1 + (pipeX2 - pipeX1) * blockT;
+            const by = pipeY + pipeH/2;
+            const alpha = Math.sin(blockT * Math.PI);
+            ctx.fillStyle = `rgba(155,77,155,${alpha * 0.8})`;
+            ctx.fillRect(bx - 6, by - 4, 12, 8);
+            ctx.fillStyle = `rgba(155,77,155,${alpha * 0.15})`;
+            ctx.beginPath();
+            ctx.arc(bx, by, 12, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Labels below pipeline
+        const labelY = pipeY + pipeH + 18;
+        ctx.fillStyle = '#64748b';
+        ctx.font = '500 9px Red Hat Text, sans-serif';
+        ctx.textAlign = 'center';
+        const pipeLabels = ['Zero-copy transfer', 'Memory pinned', 'GPU-to-GPU DMA'];
+        const labelSpacing = (pipeX2 - pipeX1) / (pipeLabels.length + 1);
+        pipeLabels.forEach((lbl, i) => {
+            ctx.fillText(lbl, pipeX1 + labelSpacing * (i + 1), labelY);
+        });
+
+        // Size labels
+        ctx.fillStyle = '#64748b';
+        ctx.font = '500 9px Red Hat Text, sans-serif';
+        ctx.textAlign = 'left';
+        const cacheGB = 141*0.45*(0.3+0.7*kvGrowth);
+        ctx.fillText((141 - 70 - cacheGB).toFixed(0) + ' GB', leftX - 44, gpuY + freeH/2 + 4);
+        ctx.fillText(cacheGB.toFixed(0) + ' GB', leftX - 44, gpuY + freeH + kvH/2 + 4);
+        ctx.fillText('70 GB', leftX - 44, gpuY + gpuH - weightsH/2 + 4);
+
+        // Update stats
+        const el1 = document.getElementById('gpumem-cache-size');
+        const el2 = document.getElementById('gpumem-transfer-time');
+        const el3 = document.getElementById('gpumem-bandwidth');
+        if(el1) el1.textContent = cacheGB.toFixed(1) + ' GB';
+        if(el2) el2.textContent = (0.3 + cacheGB * 0.05).toFixed(1) + ' ms';
+        if(el3) el3.textContent = Math.round(85 + 10 * Math.sin(t * 1.3)) + '%';
+
+        requestAnimationFrame(draw);
+    }
+    draw();
+})();
+
+/* ============================================================
+   A. BUILD YOUR OWN P/D CONFIG WIZARD
+   ============================================================ */
+(function wizardSection(){
+    const batchSlider = document.getElementById('wizard-batch');
+    const ctxSlider = document.getElementById('wizard-ctx');
+    const sloBtns = document.querySelectorAll('.wizard-slo-btn');
+    if(!batchSlider || !ctxSlider) return;
+
+    const ctxValues = [512, 1024, 4096, 8192, 16384, 32768, 65536, 131072];
+    const ctxLabels = ['512', '1K', '4K', '8K', '16K', '32K', '64K', '128K'];
+    let currentSlo = 250;
+
+    sloBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            sloBtns.forEach(b => {
+                b.style.border = '1px solid #1e293b';
+                b.style.background = '#080c15';
+                b.style.color = '#94a3b8';
+            });
+            btn.style.border = '1px solid #3b82f6';
+            btn.style.background = 'rgba(59,130,246,.15)';
+            btn.style.color = '#3b82f6';
+            currentSlo = parseInt(btn.dataset.slo);
+            updateWizard();
+        });
+    });
+
+    batchSlider.addEventListener('input', function(){
+        document.getElementById('wizard-batch-val').textContent = this.value;
+        updateWizard();
+    });
+
+    ctxSlider.addEventListener('input', function(){
+        document.getElementById('wizard-ctx-val').textContent = ctxLabels[parseInt(this.value)];
+        updateWizard();
+    });
+
+    function updateWizard(){
+        const batch = parseInt(batchSlider.value);
+        const ctxIdx = parseInt(ctxSlider.value);
+        const ctxLen = ctxValues[ctxIdx];
+        const sloMs = currentSlo;
+
+        const prefillWeight = Math.log2(ctxLen / 512) + 1;
+        const decodeWeight = Math.log2(Math.max(batch, 1)) / Math.log2(256) * 4 + 1;
+        const ratio = Math.max(1, Math.round(decodeWeight / prefillWeight * 2));
+        let prefillPods = Math.max(1, Math.round(prefillWeight * batch / 64));
+        let decodePods = Math.max(1, Math.round(prefillPods * ratio));
+        prefillPods = clamp(prefillPods, 1, 8);
+        decodePods = clamp(decodePods, 1, 16);
+
+        let baseTTFT = 0.05 + (ctxLen / 131072) * 2.5;
+        let disaggReduction = clamp(0.6 - (prefillPods * 0.05), 0.15, 0.6);
+        let estimatedTTFT = Math.max(0.05, baseTTFT * disaggReduction);
+
+        let recommend = 'yes';
+        let verdictTitle = 'Disaggregation Recommended';
+        let verdictDesc = '';
+        let verdictClass = '';
+
+        if(ctxLen <= 1024 && batch <= 8){
+            recommend = 'no';
+            verdictTitle = 'Disaggregation Not Needed';
+            verdictDesc = 'With short contexts and small batch sizes, unified serving is simpler and performs well enough. The overhead of KV cache transfer outweighs the benefit.';
+            verdictClass = 'not-worth';
+        } else if(ctxLen <= 2048 && batch <= 16){
+            recommend = 'marginal';
+            verdictTitle = 'Marginal Benefit';
+            verdictDesc = 'The workload is on the edge. Disaggregation may help under sustained load, but test both configurations before committing.';
+        } else {
+            verdictDesc = 'With ' + ctxLabels[ctxIdx] + ' context and batch size ' + batch + ', splitting prefill and decode yields meaningful TTFT improvement and better GPU utilization.';
+        }
+
+        document.getElementById('wizard-ratio').textContent = prefillPods + ':' + decodePods;
+        document.getElementById('wizard-ttft').textContent = estimatedTTFT.toFixed(2) + 's';
+        document.getElementById('wizard-prefill-pods').textContent = prefillPods;
+        document.getElementById('wizard-decode-pods').textContent = decodePods;
+
+        const verdictEl = document.getElementById('wizard-verdict');
+        verdictEl.className = 'wizard-verdict' + (verdictClass ? ' ' + verdictClass : '');
+        document.getElementById('wizard-verdict-title').textContent = verdictTitle;
+        document.getElementById('wizard-verdict-desc').textContent = verdictDesc;
+
+        if(recommend === 'yes') document.getElementById('wizard-verdict-title').style.color = '#2ec27e';
+        else if(recommend === 'no') document.getElementById('wizard-verdict-title').style.color = '#ef4444';
+        else document.getElementById('wizard-verdict-title').style.color = '#f59e0b';
+
+        const meetsSlo = (estimatedTTFT * 1000) <= sloMs;
+        document.getElementById('wizard-ttft').style.color = meetsSlo ? '#2ec27e' : '#ef4444';
+
+        // Generate YAML
+        const yamlEl = document.getElementById('wizard-yaml');
+        const routingStrategy = recommend === 'no' ? 'prefix-aware' : 'disaggregated-prefill-decode';
+        let yaml = '<span class="yk">apiVersion:</span> <span class="ys">inference.llm-d.ai/v1alpha1</span>\n'
+            + '<span class="yk">kind:</span> <span class="ys">LLMInferenceService</span>\n'
+            + '<span class="yk">metadata:</span>\n'
+            + '  <span class="yk">name:</span> <span class="ys">my-llm-service</span>\n'
+            + '  <span class="yk">namespace:</span> <span class="ys">llm-d</span>\n'
+            + '<span class="yk">spec:</span>\n'
+            + '  <span class="yk">modelArtifact:</span>\n'
+            + '    <span class="yk">uri:</span> <span class="ys">"oci://quay.io/llm-d/models:llama-3.3-70b-instruct-fp8-kv-int8"</span>\n'
+            + '  <span class="yk">inferenceConfig:</span>\n'
+            + '    <span class="yk">replicas:</span> <span class="yn">' + decodePods + '</span>\n'
+            + '    <span class="yk">accelerator:</span>\n'
+            + '      <span class="yk">type:</span> <span class="ys">nvidia.com/gpu</span>\n'
+            + '      <span class="yk">count:</span> <span class="yn">4</span>\n'
+            + '      <span class="yk">product:</span> <span class="ys">H200</span>\n';
+
+        if(recommend !== 'no'){
+            yaml += '  <span class="yk">prefill:</span>\n'
+                + '    <span class="yk">replicas:</span> <span class="yn">' + prefillPods + '</span>\n'
+                + '    <span class="yk">accelerator:</span>\n'
+                + '      <span class="yk">type:</span> <span class="ys">nvidia.com/gpu</span>\n'
+                + '      <span class="yk">count:</span> <span class="yn">4</span>\n'
+                + '      <span class="yk">product:</span> <span class="ys">H200</span>\n'
+                + '  <span class="yk">kvCacheTransfer:</span>\n'
+                + '    <span class="yk">connector:</span> <span class="ys">nixl</span>\n'
+                + '    <span class="yk">transport:</span> <span class="ys">rdma</span>\n';
+        }
+
+        yaml += '  <span class="yk">routing:</span>\n'
+            + '    <span class="yk">strategy:</span> <span class="ys">' + routingStrategy + '</span>\n';
+
+        if(recommend !== 'no'){
+            yaml += '    <span class="yk">prefillRouting:</span>\n'
+                + '      <span class="yk">loadBalancing:</span> <span class="ys">least-load</span>\n'
+                + '    <span class="yk">decodeRouting:</span>\n'
+                + '      <span class="yk">loadBalancing:</span> <span class="ys">kv-affinity</span>';
+        }
+
+        yamlEl.innerHTML = yaml;
+    }
+
+    updateWizard();
+})();
+
+/* ============================================================
+   B. WHAT-IF ANALYZER
+   ============================================================ */
+(function whatIfAnalyzer(){
+    const pwSlider = document.getElementById('whatif-pw');
+    const dwSlider = document.getElementById('whatif-dw');
+    const ctxSlider = document.getElementById('whatif-ctx');
+    const bsSlider = document.getElementById('whatif-bs');
+    const saveBtn = document.getElementById('whatif-save-btn');
+    const compareGrid = document.getElementById('whatif-compare-grid');
+    const resultsGrid = document.getElementById('whatif-results-grid');
+    if(!pwSlider || !dwSlider) return;
+
+    const ctxValues = [512, 1024, 4096, 8192, 16384, 32768, 65536, 131072];
+    const ctxLabels = ['512', '1K', '4K', '8K', '16K', '32K', '64K', '128K'];
+    let savedConfig = null;
+
+    const metricDefs = [
+        { key:'ttft', label:'TTFT (s)', unit:'s', goodMax:0.5, warnMax:1.5 },
+        { key:'throughput', label:'Throughput (tok/s)', unit:'', goodMin:800, warnMin:400 },
+        { key:'gpuUtil', label:'GPU Utilization (%)', unit:'%', goodMin:80, warnMin:60 },
+        { key:'kvTransfer', label:'KV Transfer (ms)', unit:'ms', goodMax:2, warnMax:5 },
+        { key:'memUsage', label:'Memory Usage (GB)', unit:'GB', goodMax:120, warnMax:135 },
+        { key:'costScore', label:'Cost Efficiency', unit:'', goodMin:70, warnMin:40 }
+    ];
+
+    // Build result cards
+    metricDefs.forEach(m => {
+        const card = document.createElement('div');
+        card.className = 'whatif-result-card';
+        card.id = 'whatif-card-' + m.key;
+        card.innerHTML = '<div class="whatif-result-val" id="whatif-val-' + m.key + '">--</div>'
+            + '<div class="whatif-result-label">' + m.label + '</div>'
+            + '<div style="height:6px;background:rgba(255,255,255,.07);border-radius:3px;margin-top:8px;">'
+            + '<div id="whatif-bar-' + m.key + '" style="height:100%;border-radius:3px;transition:width .3s,background .3s;width:0%;"></div></div>';
+        resultsGrid.appendChild(card);
+    });
+
+    function getMetrics(pw, dw, ctxLen, bs){
+        const ctxFactor = Math.log2(ctxLen / 512) + 1;
+
+        let ttft = 0.08 + (ctxLen / 131072) * 2.0 / Math.sqrt(pw);
+        ttft = Math.max(0.04, ttft);
+
+        let throughput = (45 * dw * (1 + 0.3 * Math.log2(bs))) / (1 + ctxFactor * 0.1);
+        throughput = Math.max(20, throughput);
+
+        let gpuUtil = Math.min(97, 50 + (bs / 256) * 30 + (pw >= 2 ? 10 : 0) + (dw >= 3 ? 8 : 0));
+
+        let kvTransfer = 0.3 + (ctxLen / 32768) * 1.5;
+        if(pw > 1) kvTransfer *= 0.85;
+
+        let memPerWorker = 70 + (ctxLen / 131072) * 50 + (bs / 256) * 15;
+        let memUsage = Math.min(141, memPerWorker);
+
+        const totalWorkers = pw + dw;
+        let costPerformance = (throughput / totalWorkers) / 50;
+        let costScore = clamp(Math.round(costPerformance * (gpuUtil / 80) * 50), 5, 100);
+
+        return {
+            ttft: Math.round(ttft * 100) / 100,
+            throughput: Math.round(throughput),
+            gpuUtil: Math.round(gpuUtil),
+            kvTransfer: Math.round(kvTransfer * 10) / 10,
+            memUsage: Math.round(memUsage),
+            costScore: costScore
+        };
+    }
+
+    function getColor(m, val){
+        if(m.goodMax !== undefined){
+            if(val <= m.goodMax) return '#2ec27e';
+            if(val <= m.warnMax) return '#f59e0b';
+            return '#ef4444';
+        }
+        if(m.goodMin !== undefined){
+            if(val >= m.goodMin) return '#2ec27e';
+            if(val >= m.warnMin) return '#f59e0b';
+            return '#ef4444';
+        }
+        return '#3b82f6';
+    }
+
+    function getBarPct(m, val){
+        if(m.goodMax !== undefined) return Math.min(100, (val / (m.warnMax * 1.5)) * 100);
+        if(m.key === 'throughput') return Math.min(100, (val / 2000) * 100);
+        if(m.key === 'gpuUtil') return val;
+        if(m.key === 'costScore') return val;
+        return 50;
+    }
+
+    function updateWhatIf(){
+        const pw = parseInt(pwSlider.value);
+        const dw = parseInt(dwSlider.value);
+        const ctxIdx = parseInt(ctxSlider.value);
+        const bs = parseInt(bsSlider.value);
+        const ctxLen = ctxValues[ctxIdx];
+
+        document.getElementById('whatif-pw-val').textContent = pw;
+        document.getElementById('whatif-dw-val').textContent = dw;
+        document.getElementById('whatif-ctx-val').textContent = ctxLabels[ctxIdx];
+        document.getElementById('whatif-bs-val').textContent = bs;
+
+        const metrics = getMetrics(pw, dw, ctxLen, bs);
+
+        metricDefs.forEach(m => {
+            const val = metrics[m.key];
+            const valEl = document.getElementById('whatif-val-' + m.key);
+            const barEl = document.getElementById('whatif-bar-' + m.key);
+            const color = getColor(m, val);
+            const display = m.key === 'throughput' ? val.toLocaleString() : val;
+
+            valEl.textContent = display + (m.unit ? ' ' + m.unit : '');
+            valEl.style.color = color;
+            barEl.style.width = getBarPct(m, val) + '%';
+            barEl.style.background = color;
+        });
+
+        drawRadar(metrics);
+        if(savedConfig) updateComparison(metrics);
+    }
+
+    function drawRadar(metrics){
+        const canvas = document.getElementById('whatif-radar');
+        if(!canvas) return;
+        const W2 = canvas.clientWidth;
+        const H2 = canvas.clientHeight;
+        const ctx2 = sizeCanvas(canvas, W2, H2);
+        const cx = W2/2, cy = H2/2;
+        const r = Math.min(W2, H2) * 0.38;
+
+        const axes = [
+            { label:'TTFT', val: 1 - clamp(metrics.ttft / 3, 0, 1) },
+            { label:'Throughput', val: clamp(metrics.throughput / 2000, 0, 1) },
+            { label:'GPU Util', val: metrics.gpuUtil / 100 },
+            { label:'KV Speed', val: 1 - clamp(metrics.kvTransfer / 8, 0, 1) },
+            { label:'Memory', val: 1 - clamp(metrics.memUsage / 141, 0, 1) },
+            { label:'Cost Eff.', val: metrics.costScore / 100 }
+        ];
+        const n = axes.length;
+        const angleStep = (Math.PI * 2) / n;
+
+        [0.25, 0.5, 0.75, 1.0].forEach(ring => {
+            ctx2.strokeStyle = 'rgba(30,41,59,0.5)';
+            ctx2.lineWidth = 1;
+            ctx2.beginPath();
+            for(let i = 0; i <= n; i++){
+                const angle = -Math.PI/2 + i * angleStep;
+                const rx = cx + Math.cos(angle) * r * ring;
+                const ry = cy + Math.sin(angle) * r * ring;
+                if(i === 0) ctx2.moveTo(rx, ry);
+                else ctx2.lineTo(rx, ry);
+            }
+            ctx2.stroke();
+        });
+
+        for(let i = 0; i < n; i++){
+            const angle = -Math.PI/2 + i * angleStep;
+            ctx2.strokeStyle = 'rgba(30,41,59,0.5)';
+            ctx2.beginPath();
+            ctx2.moveTo(cx, cy);
+            ctx2.lineTo(cx + Math.cos(angle) * r, cy + Math.sin(angle) * r);
+            ctx2.stroke();
+
+            const lx = cx + Math.cos(angle) * (r + 20);
+            const ly = cy + Math.sin(angle) * (r + 20);
+            ctx2.fillStyle = '#94a3b8';
+            ctx2.font = '500 10px Red Hat Text, sans-serif';
+            ctx2.textAlign = 'center';
+            ctx2.textBaseline = 'middle';
+            ctx2.fillText(axes[i].label, lx, ly);
+        }
+
+        // Current polygon
+        ctx2.fillStyle = 'rgba(59,130,246,0.15)';
+        ctx2.strokeStyle = '#3b82f6';
+        ctx2.lineWidth = 2;
+        ctx2.beginPath();
+        for(let i = 0; i < n; i++){
+            const angle = -Math.PI/2 + i * angleStep;
+            const px = cx + Math.cos(angle) * r * axes[i].val;
+            const py = cy + Math.sin(angle) * r * axes[i].val;
+            if(i === 0) ctx2.moveTo(px, py); else ctx2.lineTo(px, py);
+        }
+        ctx2.closePath(); ctx2.fill(); ctx2.stroke();
+
+        for(let i = 0; i < n; i++){
+            const angle = -Math.PI/2 + i * angleStep;
+            ctx2.beginPath();
+            ctx2.arc(cx + Math.cos(angle) * r * axes[i].val, cy + Math.sin(angle) * r * axes[i].val, 4, 0, Math.PI*2);
+            ctx2.fillStyle = '#3b82f6';
+            ctx2.fill();
+        }
+
+        // Saved overlay
+        if(savedConfig){
+            const sm = getMetrics(savedConfig.pw, savedConfig.dw, savedConfig.ctxLen, savedConfig.bs);
+            const sAxes = [
+                1 - clamp(sm.ttft / 3, 0, 1),
+                clamp(sm.throughput / 2000, 0, 1),
+                sm.gpuUtil / 100,
+                1 - clamp(sm.kvTransfer / 8, 0, 1),
+                1 - clamp(sm.memUsage / 141, 0, 1),
+                sm.costScore / 100
+            ];
+            ctx2.fillStyle = 'rgba(155,77,155,0.1)';
+            ctx2.strokeStyle = '#9b4d9b';
+            ctx2.lineWidth = 2;
+            ctx2.setLineDash([4, 4]);
+            ctx2.beginPath();
+            for(let i = 0; i < n; i++){
+                const angle = -Math.PI/2 + i * angleStep;
+                const px = cx + Math.cos(angle) * r * sAxes[i];
+                const py = cy + Math.sin(angle) * r * sAxes[i];
+                if(i === 0) ctx2.moveTo(px, py); else ctx2.lineTo(px, py);
+            }
+            ctx2.closePath(); ctx2.fill(); ctx2.stroke();
+            ctx2.setLineDash([]);
+        }
+    }
+
+    function updateComparison(currentMetrics){
+        if(!savedConfig) return;
+        const sm = getMetrics(savedConfig.pw, savedConfig.dw, savedConfig.ctxLen, savedConfig.bs);
+        const currentCol = document.getElementById('whatif-compare-current');
+        const savedCol = document.getElementById('whatif-compare-saved');
+
+        currentCol.innerHTML = '<h5>Current</h5>';
+        savedCol.innerHTML = '<h5>Saved</h5>';
+
+        metricDefs.forEach(m => {
+            const curVal = currentMetrics[m.key];
+            const savVal = sm[m.key];
+            const shortLabel = m.label.split('(')[0].trim();
+            currentCol.innerHTML += '<div class="whatif-compare-row"><span>' + shortLabel + '</span><span>' + curVal + (m.unit ? ' ' + m.unit : '') + '</span></div>';
+            savedCol.innerHTML += '<div class="whatif-compare-row"><span>' + shortLabel + '</span><span>' + savVal + (m.unit ? ' ' + m.unit : '') + '</span></div>';
+        });
+    }
+
+    saveBtn.addEventListener('click', () => {
+        const ctxIdx = parseInt(ctxSlider.value);
+        savedConfig = {
+            pw: parseInt(pwSlider.value),
+            dw: parseInt(dwSlider.value),
+            ctxLen: ctxValues[ctxIdx],
+            bs: parseInt(bsSlider.value)
+        };
+        compareGrid.style.display = 'grid';
+        saveBtn.textContent = 'Config Saved -- Update & Compare';
+        updateWhatIf();
+    });
+
+    [pwSlider, dwSlider, ctxSlider, bsSlider].forEach(s => {
+        s.addEventListener('input', updateWhatIf);
+    });
+
+    updateWhatIf();
+})();
+
+/* ============================================================
+   D. KEYBOARD SHORTCUTS
+   ============================================================ */
+(function keyboardShortcuts(){
+    const fab = document.getElementById('kb-fab');
+    const panel = document.getElementById('kb-panel');
+    const toast = document.getElementById('kb-toast');
+    const zoomOverlay = document.getElementById('bench-zoom-overlay');
+    if(!fab || !panel) return;
+
+    const sectionList = Array.from(document.querySelectorAll('section'));
+    let lightMode = false;
+
+    function togglePanel(){ panel.classList.toggle('visible'); }
+    function closePanel(){ panel.classList.remove('visible'); }
+
+    function showToast(msg){
+        toast.textContent = msg;
+        toast.classList.add('visible');
+        setTimeout(() => { toast.classList.remove('visible'); }, 1800);
+    }
+
+    function getCurrentSectionIndex(){
+        const scrollY = window.scrollY + window.innerHeight / 3;
+        for(let i = sectionList.length - 1; i >= 0; i--){
+            if(sectionList[i].offsetTop <= scrollY) return i;
+        }
+        return 0;
+    }
+
+    function resetSliders(){
+        document.querySelectorAll('input[type=range]').forEach(s => {
+            s.value = s.defaultValue;
+            s.dispatchEvent(new Event('input'));
+        });
+        document.querySelectorAll('select').forEach(s => {
+            const defIdx = Array.from(s.options).findIndex(o => o.defaultSelected);
+            s.selectedIndex = defIdx >= 0 ? defIdx : 0;
+            s.dispatchEvent(new Event('change'));
+        });
+        showToast('All sliders reset to defaults');
+    }
+
+    fab.addEventListener('click', togglePanel);
+
+    document.addEventListener('keydown', e => {
+        if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+
+        const key = e.key;
+
+        // 1-9 jump to sections
+        if(key >= '1' && key <= '9' && !e.ctrlKey && !e.metaKey){
+            const idx = parseInt(key) - 1;
+            if(idx < sectionList.length){
+                sectionList[idx].scrollIntoView({ behavior: 'smooth' });
+                showToast('Section ' + key);
+            }
+            return;
+        }
+
+        // Space / Shift+Space scroll sections
+        if(key === ' ' && !e.ctrlKey && !e.metaKey){
+            e.preventDefault();
+            const cur = getCurrentSectionIndex();
+            const next = e.shiftKey ? Math.max(0, cur - 1) : Math.min(sectionList.length - 1, cur + 1);
+            sectionList[next].scrollIntoView({ behavior: 'smooth' });
+            return;
+        }
+
+        // ? toggle shortcut panel
+        if(key === '?' || key === '/'){
+            e.preventDefault();
+            togglePanel();
+            return;
+        }
+
+        // R reset all sliders
+        if((key === 'r' || key === 'R') && !e.ctrlKey && !e.metaKey){
+            resetSliders();
+            return;
+        }
+
+        // D toggle dark/light mode
+        if((key === 'd' || key === 'D') && !e.ctrlKey && !e.metaKey){
+            lightMode = !lightMode;
+            document.body.style.background = lightMode ? '#f0f2f5' : '#0a0e17';
+            document.body.style.color = lightMode ? '#1e293b' : '#e2e8f0';
+            showToast(lightMode ? 'Light mode (minimal)' : 'Dark mode');
+            return;
+        }
+
+        // S snapshot config to clipboard
+        if((key === 's' || key === 'S') && !e.ctrlKey && !e.metaKey){
+            const snap = {
+                timestamp: new Date().toISOString(),
+                wizard: {
+                    batchSize: document.getElementById('wizard-batch')?.value,
+                    contextLength: document.getElementById('wizard-ctx-val')?.textContent,
+                    verdict: document.getElementById('wizard-verdict-title')?.textContent
+                },
+                whatIf: {
+                    prefillWorkers: document.getElementById('whatif-pw')?.value,
+                    decodeWorkers: document.getElementById('whatif-dw')?.value,
+                    contextLength: document.getElementById('whatif-ctx-val')?.textContent,
+                    batchSize: document.getElementById('whatif-bs')?.value
+                },
+                simulator: {
+                    loadLevel: document.getElementById('sim-slider')?.value
+                }
+            };
+            navigator.clipboard.writeText(JSON.stringify(snap, null, 2)).then(
+                () => showToast('Config snapshot copied to clipboard'),
+                () => showToast('Could not copy to clipboard')
+            );
+            return;
+        }
+
+        // Escape close panels
+        if(key === 'Escape'){
+            closePanel();
+            if(zoomOverlay) zoomOverlay.classList.remove('visible');
+            return;
+        }
+    });
+})();
+
+/* ============================================================
+   E. BENCHMARK CLICK-TO-ZOOM
+   ============================================================ */
+(function benchZoom(){
+    const overlay = document.getElementById('bench-zoom-overlay');
+    const closeBtn = document.getElementById('bench-zoom-close');
+    if(!overlay || !closeBtn) return;
+
+    function showZoom(title, stats, context){
+        document.getElementById('bench-zoom-title').textContent = title;
+        document.getElementById('bench-zoom-detail').innerHTML = stats.map(s =>
+            '<div class="bench-zoom-stat"><div class="bench-zoom-stat-val">' + s.val + '</div><div class="bench-zoom-stat-label">' + s.label + '</div></div>'
+        ).join('');
+        document.getElementById('bench-zoom-context').textContent = context;
+        overlay.classList.add('visible');
+    }
+
+    closeBtn.addEventListener('click', () => overlay.classList.remove('visible'));
+    overlay.addEventListener('click', e => { if(e.target === overlay) overlay.classList.remove('visible'); });
+
+    // TTFT chart click-to-zoom
+    const ttftCanvas = document.getElementById('chart-ttft');
+    if(ttftCanvas){
+        const labels = ['500','1K','4K','8K','16K','32K'];
+        const cold = [0.65, 0.24, 0.45, 0.93, 1.90, 4.74];
+        const cached = [0.16, 0.16, 0.16, 0.25, 0.19, 0.24];
+        const speedups = ['4.0x','1.5x','2.8x','3.8x','10.0x','19.8x'];
+
+        ttftCanvas.style.cursor = 'pointer';
+        ttftCanvas.addEventListener('click', function(e){
+            const r = ttftCanvas.getBoundingClientRect();
+            const mx = e.clientX - r.left;
+            const W = ttftCanvas.clientWidth;
+            const pad = {left:65, right:30};
+            const cw = W - pad.left - pad.right;
+            let idx = Math.round(((mx - pad.left) / cw) * (labels.length - 1));
+            idx = Math.max(0, Math.min(idx, labels.length - 1));
+            const pct = Math.round((1 - cached[idx] / cold[idx]) * 100);
+            showZoom(
+                'TTFT at ' + labels[idx] + ' Token Context',
+                [
+                    {val: cold[idx] + 's', label: 'Cold / Uncached TTFT'},
+                    {val: cached[idx] + 's', label: 'Cached TTFT'},
+                    {val: speedups[idx], label: 'Speedup Factor'},
+                    {val: pct + '%', label: 'Latency Reduction'}
+                ],
+                'At ' + labels[idx] + ' tokens, prefix caching with disaggregated routing reduces TTFT by ' + pct + '%. The cached path skips full attention recomputation by reusing KV cache blocks already present on the prefill pod.'
+            );
+        });
+    }
+
+    // Throughput chart click-to-zoom
+    const tputCanvas = document.getElementById('chart-tput');
+    if(tputCanvas){
+        const labels = ['1','5','10','50'];
+        const values = [45.5, 175.3, 359.8, 1483.4];
+
+        tputCanvas.style.cursor = 'pointer';
+        tputCanvas.addEventListener('click', function(e){
+            const r = tputCanvas.getBoundingClientRect();
+            const mx = e.clientX - r.left;
+            const W = tputCanvas.clientWidth;
+            const pad = {left:70, right:30};
+            const cw = W - pad.left - pad.right;
+            const barGap = cw / labels.length;
+            let idx = Math.floor((mx - pad.left) / barGap);
+            idx = Math.max(0, Math.min(idx, labels.length - 1));
+            const sf = (values[idx] / values[0]).toFixed(1);
+            showZoom(
+                values[idx].toLocaleString() + ' tok/s at ' + labels[idx] + ' Concurrent Requests',
+                [
+                    {val: values[idx].toLocaleString(), label: 'Tokens per Second'},
+                    {val: sf + 'x', label: 'Scale vs Single Request'},
+                    {val: labels[idx], label: 'Concurrency Level'},
+                    {val: Math.round(values[idx] / parseInt(labels[idx])).toString(), label: 'Tok/s per Request'}
+                ],
+                'With ' + labels[idx] + ' concurrent requests, disaggregated architecture achieves ' + sf + 'x scaling. Dedicated decode pods prevent prefill-decode interference, maintaining throughput efficiency under heavy load.'
+            );
+        });
+    }
+
+    // Latency chart click-to-zoom
+    const latCanvas = document.getElementById('chart-latency');
+    if(latCanvas){
+        const configs = [
+            {label:'Unified 4K', p50:0.65, p95:1.8, p99:3.2},
+            {label:'Disagg 4K', p50:0.16, p95:0.28, p99:0.45},
+            {label:'Unified 16K', p50:1.90, p95:4.5, p99:7.8},
+            {label:'Disagg 16K', p50:0.19, p95:0.35, p99:0.55},
+            {label:'Unified 32K', p50:4.74, p95:8.2, p99:11.5},
+            {label:'Disagg 32K', p50:0.24, p95:0.42, p99:0.60}
+        ];
+
+        latCanvas.style.cursor = 'pointer';
+        latCanvas.addEventListener('click', function(e){
+            const r = latCanvas.getBoundingClientRect();
+            const mx = e.clientX - r.left;
+            const W = latCanvas.clientWidth;
+            const pad = {left:65, right:30};
+            const cw = W - pad.left - pad.right;
+            const groupW = cw / configs.length;
+            let idx = Math.floor((mx - pad.left) / groupW);
+            idx = Math.max(0, Math.min(idx, configs.length - 1));
+            const cfg = configs[idx];
+            const isDisagg = idx % 2 === 1;
+            const pctVs = isDisagg ? Math.round((1 - cfg.p50 / configs[idx-1].p50) * 100) + '% faster' : 'baseline';
+
+            showZoom(
+                cfg.label + ' Context Latency Distribution',
+                [
+                    {val: cfg.p50 + 's', label: 'P50 (Median)'},
+                    {val: cfg.p95 + 's', label: 'P95'},
+                    {val: cfg.p99 + 's', label: 'P99 (Tail)'},
+                    {val: pctVs, label: isDisagg ? 'P50 Improvement' : 'Baseline'}
+                ],
+                isDisagg
+                    ? 'Disaggregated P/D delivers ' + pctVs + ' at the median, with dramatically tighter tail latency. The P99 drops from ' + configs[idx-1].p99 + 's to ' + cfg.p99 + 's, making production SLOs far more achievable.'
+                    : 'Unified serving at this context length shows significant tail latency spread. P99 reaches ' + cfg.p99 + 's, which can break strict SLO targets in production.'
+            );
+        });
+    }
 })();
 
 })(); // end IIFE
