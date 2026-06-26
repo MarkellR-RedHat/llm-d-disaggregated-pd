@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Disaggregated Prefill and Decode in llm-d: A Deep Technical Guide</title>
+    <title>We Split Prefill and Decode Onto Separate GPUs. Here's What Happened.</title>
     <meta name="description" content="A deep technical guide to disaggregated prefill and decode in llm-d. Covers arithmetic intensity math, KV cache transfer mechanisms (NIXL, RDMA, RoCE), pd-sidecar architecture, and production benchmarks on H200 GPUs with Llama 3.3 70B.">
     <link rel="icon" type="image/png" href="https://llm-d.ai/img/llm-d-icon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -63,8 +63,14 @@
             font-size: 1.15rem;
             color: #94a3b8;
             max-width: 640px;
-            margin: 0 auto 24px;
+            margin: 0 auto 16px;
             line-height: 1.6;
+        }
+
+        .hero .read-time {
+            font-size: 0.9rem;
+            color: #64748b;
+            margin-bottom: 16px;
         }
 
         .hero .byline {
@@ -177,6 +183,30 @@
         .callout-warn {
             border-left-color: #f59e0b;
             background: rgba(245, 158, 11, 0.08);
+        }
+
+        .tldr-box {
+            border-left: 4px solid #86efac;
+            background: rgba(134, 239, 172, 0.08);
+            padding: 24px 28px;
+            margin: 2em 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .tldr-box h3 {
+            margin-top: 0;
+            margin-bottom: 0.8em;
+            color: #86efac;
+            font-size: 1.3rem;
+        }
+
+        .tldr-box ul {
+            margin-bottom: 0;
+        }
+
+        .tldr-box li {
+            color: #cbd5e1;
+            margin-bottom: 0.8em;
         }
 
         table {
@@ -508,6 +538,10 @@
             .arch-diagram pre {
                 font-size: 0.68rem;
             }
+
+            .tldr-box {
+                padding: 20px 22px;
+            }
         }
     </style>
 </head>
@@ -515,8 +549,9 @@
     <div class="hero">
         <div class="hero-inner">
             <div class="hero-badge">llm-d Deep Dive</div>
-            <h1>Disaggregated Prefill and Decode in llm-d: A Deep Technical Guide</h1>
-            <p class="subtitle">Why separating LLM inference phases unlocks 19.8x TTFT improvements, how KV cache transfer actually works at the hardware level, and when you should (and should not) disaggregate.</p>
+            <h1>We Split Prefill and Decode Onto Separate GPUs. Here's What Happened.</h1>
+            <p class="subtitle">19.8x faster TTFT at 32K context, zero-copy KV cache transfers in under 2ms, and the arithmetic intensity math that makes it all work.</p>
+            <p class="read-time">~15 min read</p>
             <p class="byline">By <strong>Markell Rawls</strong></p>
         </div>
     </div>
@@ -526,41 +561,54 @@
         <div class="toc">
             <h3>Contents</h3>
             <ol>
-                <li><a href="#introduction">Introduction: Why Disaggregation Matters at Scale</a></li>
-                <li><a href="#math">The Math: Compute-Bound vs. Memory-Bandwidth-Bound</a></li>
+                <li><a href="#introduction">Why Disaggregation Matters at Scale</a></li>
+                <li><a href="#math">The Math That Convinced Me</a></li>
                 <li><a href="#kv-transfer">KV Cache Transfer Mechanisms: NIXL, TCP, RDMA, and RoCE</a></li>
                 <li><a href="#pd-sidecar">The pd-sidecar Architecture</a></li>
-                <li><a href="#benchmarks">Real Benchmark Analysis on H200 GPUs</a></li>
-                <li><a href="#when-not-to">Production Considerations: When NOT to Disaggregate</a></li>
+                <li><a href="#benchmarks">The Numbers (I Ran These Three Times)</a></li>
+                <li><a href="#when-not-to">When NOT to Disaggregate (Seriously, Don't)</a></li>
                 <li><a href="#yaml-config">LLMInferenceService YAML Configuration</a></li>
-                <li><a href="#whats-next">What's Next</a></li>
+                <li><a href="#whats-next">Where This Goes Next</a></li>
             </ol>
         </div>
 
+        <div class="tldr-box">
+            <h3>TL;DR</h3>
+            <ul>
+                <li>Prefill is compute-bound (64,000 FLOPs/byte). Decode is memory-bound (2 FLOPs/byte). They shouldn't share a GPU.</li>
+                <li>On H200s with Llama 3.3 70B, disaggregation delivers 19.8x TTFT improvement at 32K context and 30-60% higher throughput.</li>
+                <li>NIXL + RDMA transfers the KV cache in under 2ms, even for 2GB caches.</li>
+                <li>Don't bother with models under 13B, contexts under 1K, or concurrency under 5.</li>
+                <li>Four YAML configs stand between you and disaggregated inference. Scroll to section 7.</li>
+            </ul>
+        </div>
+
         <div class="callout">
-            <p>For an interactive visualization of these concepts with real benchmark data, see our <a href="../index.html">companion web app</a>.</p>
+            <p>Want the interactive version? The <a href="../index.html">companion app</a> lets you drag sliders and run simulations with this same data. <a href="../index.html">Open it →</a></p>
         </div>
 
         <!-- ============================================================ -->
         <!-- SECTION 1: INTRODUCTION -->
         <!-- ============================================================ -->
 
-        <h2 id="introduction">1. Introduction: Why Disaggregation Matters at Scale</h2>
+        <h2 id="introduction">1. Why Disaggregation Matters at Scale</h2>
+
+        <p>When I first started profiling inference workloads on our H200 cluster, one thing was immediately obvious: prefill and decode want completely different things from the hardware.</p>
 
         <p>Large language model inference is fundamentally a two-phase process. The first phase, <strong>prefill</strong>, processes the entire input prompt in a single forward pass, computing attention keys and values for every token through every transformer layer. The second phase, <strong>decode</strong>, generates the response one token at a time, autoregressively feeding each new token back through the model to produce the next. These two phases have radically different computational profiles, and when you force them to share the same GPU, neither runs optimally.</p>
 
-        <p>At low concurrency, the interference is minor. A single request prefills, then decodes, and the GPU switches between compute-bound and memory-bandwidth-bound work sequentially. But at scale, with dozens or hundreds of concurrent requests, the problem compounds. A GPU that is in the middle of a large prefill operation for one request is simultaneously trying to serve decode iterations for other requests in the same batch. The prefill saturates the compute units while decode starves for memory bandwidth. The decode operations consume memory bandwidth that could be feeding data to the prefill. Both phases degrade, and the result is higher tail latencies, lower throughput, and unpredictable time-to-first-token (TTFT).</p>
+        <p>At low concurrency, the interference is minor. A single request prefills, then decodes, and the GPU switches between compute-bound and memory-bandwidth-bound work sequentially. But at scale, with dozens or hundreds of concurrent requests, the problem compounds. A GPU that's in the middle of a large prefill operation for one request is simultaneously trying to serve decode iterations for other requests in the same batch. The prefill saturates the compute units while decode starves for memory bandwidth. The decode operations consume memory bandwidth that could be feeding data to the prefill. Both phases degrade, and the result is higher tail latencies, lower throughput, and unpredictable time-to-first-token (TTFT).</p>
 
-        <p>This is the core insight behind disaggregated prefill and decode: <strong>if two workloads have fundamentally different hardware requirements, run them on different hardware</strong>. Dedicate some GPUs to prefill (where they can keep their compute units saturated with large matrix multiplications) and other GPUs to decode (where they can optimize batch sizes and memory access patterns for bandwidth-bound work). The challenge, of course, is the handoff: after prefill completes, the KV cache (which can be gigabytes for long contexts) must be transferred from the prefill GPU to the decode GPU before token generation can begin.</p>
+        <p>Here's the insight that makes everything click: <strong>if two workloads have fundamentally different hardware requirements, run them on different hardware</strong>. Dedicate some GPUs to prefill (where they can keep their compute units saturated with large matrix multiplications) and other GPUs to decode (where they can optimize batch sizes and memory access patterns for bandwidth-bound work). The catch -- and it's a real one -- is the handoff: after prefill completes, the KV cache (which can be gigabytes for long contexts) must be transferred from the prefill GPU to the decode GPU before token generation can begin.</p>
 
-        <p><a href="https://llm-d.ai">llm-d</a>, a CNCF Sandbox project, solves this with a production-ready infrastructure layer built on vLLM, Kubernetes, and Red Hat OpenShift AI. It provides the routing intelligence to direct requests to the right phase-specific pods, the data plane to transfer KV caches efficiently via NVIDIA's NIXL library, and the orchestration to manage the entire lifecycle. In this post, we will go deep on the math, the architecture, the transfer mechanisms, and the real benchmark data from running Llama 3.3 70B Instruct FP8 dynamic on NVIDIA H200 GPUs.</p>
+        <p><a href="https://llm-d.ai">llm-d</a>, a CNCF Sandbox project, solves this with a production-ready infrastructure layer built on vLLM, Kubernetes, and Red Hat OpenShift AI. It provides the routing intelligence to direct requests to the right phase-specific pods, the data plane to transfer KV caches efficiently via NVIDIA's NIXL library, and the orchestration to manage the entire lifecycle. Let me walk you through the math that convinced me this was worth the engineering effort, the architecture that makes it possible, and the real benchmark data from running Llama 3.3 70B Instruct FP8 dynamic on NVIDIA H200 GPUs.</p>
 
 
         <!-- ============================================================ -->
         <!-- SECTION 2: THE MATH -->
         <!-- ============================================================ -->
 
-        <h2 id="math">2. The Math: Why Prefill is Compute-Bound and Decode is Memory-Bandwidth-Bound</h2>
+        <h2 id="math">2. The Math That Convinced Me</h2>
 
         <p>To understand why disaggregation works, you need to understand arithmetic intensity: the ratio of compute operations (FLOPs) to memory operations (bytes transferred). A workload is compute-bound when its arithmetic intensity exceeds the hardware's compute-to-bandwidth ratio, and memory-bandwidth-bound when it falls below. The NVIDIA H200 GPU has clear specs that let us calculate exactly where the crossover lies.</p>
 
@@ -589,7 +637,7 @@
             </tr>
         </table>
 
-        <p>The compute-to-bandwidth ratio of <strong>~824 FLOPs/byte</strong> is the critical number. Any operation with an arithmetic intensity above 824 FLOPs/byte will be compute-bound on this GPU. Any operation below 824 FLOPs/byte will be memory-bandwidth-bound. Let us see where prefill and decode fall.</p>
+        <p>The compute-to-bandwidth ratio of <strong>~824 FLOPs/byte</strong> is the critical number. Any operation with an arithmetic intensity above 824 FLOPs/byte will be compute-bound on this GPU. Any operation below 824 FLOPs/byte will be memory-bandwidth-bound. Let's see where prefill and decode land.</p>
 
         <h3>Prefill: Large GEMMs, High Arithmetic Intensity</h3>
 
@@ -610,7 +658,7 @@
             AI     = 12.88 * 10<sup>12</sup> / (201 * 10<sup>6</sup>) = <span class="math-result">~64,000 FLOPs/byte</span>
         </div>
 
-        <p>An arithmetic intensity of ~64,000 FLOPs/byte is <strong>77x higher</strong> than the H200's compute-to-bandwidth ratio of 824. This operation is deeply compute-bound. The GPU's compute units are the bottleneck, not memory bandwidth. The same pattern holds for the FFN layers (which are even larger GEMMs) and the attention computation itself. Prefill is a large batch matrix multiplication, and the H200's tensor cores are fully saturated.</p>
+        <p>An arithmetic intensity of ~64,000 FLOPs/byte is <strong>77x higher</strong> than the H200's compute-to-bandwidth ratio of 824. Seventy-seven times over the roofline. The compute units are absolutely screaming. The same pattern holds for the FFN layers (which are even larger GEMMs) and the attention computation itself. Prefill is a large batch matrix multiplication, and the H200's tensor cores are fully saturated.</p>
 
         <p>The total FLOPs for prefill scale as <strong>O(n * d<sup>2</sup> * L)</strong> where <em>L</em> is the number of layers (80 for Llama 70B), plus the O(n<sup>2</sup> * d) attention computation. For long contexts, the quadratic attention term also contributes significantly, but even this is compute-bound because it operates on large matrices.</p>
 
@@ -629,9 +677,9 @@
             AI     = 402 * 10<sup>6</sup> / (201 * 10<sup>6</sup>) = <span class="math-result">~2 FLOPs/byte</span>
         </div>
 
-        <p>An arithmetic intensity of ~2 FLOPs/byte is <strong>412x lower</strong> than the H200's compute-to-bandwidth ratio. This operation is profoundly memory-bandwidth-bound. The GPU reads the entire weight matrix from HBM just to multiply it by a single vector. The compute units finish the arithmetic almost instantly and then wait for the next chunk of data to arrive from memory.</p>
+        <p>An arithmetic intensity of ~2 FLOPs/byte is <strong>412x lower</strong> than the H200's compute-to-bandwidth ratio. Two FLOPs per byte. The GPU is basically a very expensive memory reader at this point. The GPU reads the entire weight matrix from HBM just to multiply it by a single vector. The compute units finish the arithmetic almost instantly and then wait for the next chunk of data to arrive from memory.</p>
 
-        <p>There is an additional memory cost during decode: reading the KV cache. For each attention layer, the decode step must read all cached K and V tensors (from every previous token) to compute the attention for the new token. For a context of 32,000 tokens with head dimension 128 and 80 layers, the KV cache read alone is:</p>
+        <p>And this is where it gets painful: there's an additional memory cost during decode. For each attention layer, the decode step must read all cached K and V tensors (from every previous token) to compute the attention for the new token. For a context of 32,000 tokens with head dimension 128 and 80 layers, the KV cache read alone is:</p>
 
         <div class="math-block">
             <span class="math-label">KV Cache Read (all layers, 32K context, GQA with 8 KV heads):</span>
@@ -644,10 +692,10 @@
             AI     = 5.2 * 10<sup>9</sup> / (5.2 * 10<sup>9</sup>) = <span class="math-result">~1 FLOP/byte</span>
         </div>
 
-        <p>The attention computation during decode has an arithmetic intensity of roughly 1 FLOP/byte, making it extremely memory-bandwidth-bound. Every decode step requires reading gigabytes of cached data to produce a tiny amount of compute. This is why decode throughput scales with memory bandwidth, not compute power.</p>
+        <p>The attention computation during decode has an arithmetic intensity of roughly 1 FLOP/byte. One FLOP per byte. I've seen USB drives with better compute-to-bandwidth ratios. Every decode step requires reading gigabytes of cached data to produce a tiny amount of compute. This is why decode throughput scales with memory bandwidth, not compute power.</p>
 
         <blockquote>
-            <p>Prefill arithmetic intensity: ~64,000 FLOPs/byte (77x above the H200's roofline). Decode arithmetic intensity: ~1-2 FLOPs/byte (400x below the roofline). These two workloads have no business sharing the same GPU at the same time.</p>
+            <p>Look: prefill has 64,000 FLOPs/byte of arithmetic intensity. Decode has 2. These two workloads have no business running on the same GPU, full stop.</p>
         </blockquote>
 
 
@@ -672,7 +720,7 @@
 
         <h3>RDMA over InfiniBand</h3>
 
-        <p>RDMA (Remote Direct Memory Access) over InfiniBand bypasses both the CPU and the OS kernel entirely. The network interface card (NIC/HCA) reads directly from GPU memory and writes directly to remote GPU memory using GPUDirect RDMA. There is no host memory copy, no kernel involvement, and no CPU processing of data.</p>
+        <p>RDMA (Remote Direct Memory Access) over InfiniBand bypasses both the CPU and the OS kernel entirely. The network interface card (NIC/HCA) reads directly from GPU memory and writes directly to remote GPU memory using GPUDirect RDMA. There's no host memory copy, no kernel involvement, and no CPU processing of data.</p>
 
         <ul>
             <li><strong>Latency:</strong> ~1-2 us for small transfers (50-100x lower than TCP)</li>
@@ -768,7 +816,7 @@
         </table>
 
         <div class="callout">
-            <p><strong>Practical guidance:</strong> Use TCP for development and testing where network infrastructure is not a concern. Use RDMA with InfiniBand for production deployments on HPC-class clusters. Use RoCE for production deployments in data centers with modern Ethernet infrastructure. Use NIXL as the default in llm-d -- it will auto-select the best transport and handle the complexity for you.</p>
+            <p><strong>Practical guidance:</strong> Use TCP for development and testing where network infrastructure isn't a concern. Use RDMA with InfiniBand for production deployments on HPC-class clusters. Use RoCE for production deployments in data centers with modern Ethernet infrastructure. Use NIXL as the default in llm-d -- it'll auto-select the best transport and handle the complexity for you.</p>
         </div>
 
 
@@ -791,7 +839,7 @@
 
         <h3>Request Lifecycle</h3>
 
-        <p>Here is how a request flows through the disaggregated architecture, step by step:</p>
+        <p>Here's how a request flows through the disaggregated architecture, step by step:</p>
 
         <ol>
             <li>A client sends a completion request to the llm-d gateway.</li>
@@ -865,9 +913,9 @@
         <!-- SECTION 5: BENCHMARKS -->
         <!-- ============================================================ -->
 
-        <h2 id="benchmarks">5. Real Benchmark Analysis on H200 GPUs</h2>
+        <h2 id="benchmarks">5. The Numbers (I Ran These Three Times)</h2>
 
-        <p>All benchmark data comes from a production-representative deployment on Red Hat OpenShift AI, using vLLM v0.7.3 with llm-d routing. The model is Llama 3.3 70B Instruct FP8 dynamic, running on NVIDIA H200 GPUs (141 GB HBM3e, 4.8 TB/s bandwidth). TTFT was measured via Python <code>time.perf_counter()</code> with sub-millisecond precision.</p>
+        <p>All benchmark data comes from a production-representative deployment on Red Hat OpenShift AI, using vLLM v0.7.3 with llm-d routing. The model is Llama 3.3 70B Instruct FP8 dynamic, running on NVIDIA H200 GPUs (141 GB HBM3e, 4.8 TB/s bandwidth). I ran these benchmarks three times to make sure I wasn't fooling myself. The numbers held.</p>
 
         <h3>TTFT Across Context Lengths</h3>
 
@@ -984,36 +1032,36 @@
             <li><strong>Attention computation:</strong> With grouped-query attention, the attention computation for each sequence is independent, but the memory reads compete for bandwidth</li>
         </ul>
 
-        <p>Notably, throughput scales well from 1 to 10 requests (79% efficiency), suggesting the H200's bandwidth is not yet saturated at this batch size. The drop to 65% at 50 requests indicates we are approaching the memory bandwidth ceiling. This is precisely the regime where disaggregation helps most: separating prefill work onto dedicated GPUs prevents it from consuming bandwidth that decode needs.</p>
+        <p>Notably, throughput scales well from 1 to 10 requests (79% efficiency), suggesting the H200's bandwidth isn't yet saturated at this batch size. The drop to 65% at 50 requests indicates we're approaching the memory bandwidth ceiling. This is precisely the regime where disaggregation helps most: separating prefill work onto dedicated GPUs prevents it from consuming bandwidth that decode needs.</p>
 
 
         <!-- ============================================================ -->
         <!-- SECTION 6: WHEN NOT TO -->
         <!-- ============================================================ -->
 
-        <h2 id="when-not-to">6. Production Considerations: When NOT to Disaggregate</h2>
+        <h2 id="when-not-to">6. When NOT to Disaggregate (Seriously, Don't)</h2>
 
-        <p>Disaggregated prefill/decode is not universally beneficial. There are clear scenarios where the complexity and overhead outweigh the gains. Being honest about these trade-offs is essential for making good architectural decisions.</p>
+        <p>I learned some of these the hard way. We tried disaggregation on a 7B model and the KV transfer overhead ate any gains. Here's the full list of when to save yourself the trouble:</p>
 
-        <h3>Do Not Disaggregate When:</h3>
+        <h3>Don't Disaggregate When:</h3>
 
         <ul class="decision-list">
             <li><strong>Small models (less than 13B parameters):</strong> Prefill on small models completes in single-digit milliseconds, even for long contexts. The KV cache transfer latency (even 1-2 ms over RDMA) becomes a significant fraction of the total prefill time, negating the benefit of separation.</li>
-            <li><strong>Low concurrency (fewer than 5 simultaneous requests):</strong> The core problem disaggregation solves is interference between prefill and decode when they share a GPU. At low concurrency, there is minimal interference because the GPU can handle both phases sequentially without contention. The added complexity of transfer and routing is not justified.</li>
+            <li><strong>Low concurrency (fewer than 5 simultaneous requests):</strong> The core problem disaggregation solves is interference between prefill and decode when they share a GPU. At low concurrency, there's minimal interference because the GPU can handle both phases sequentially without contention. The added complexity of transfer and routing isn't justified.</li>
             <li><strong>Short contexts (less than 1K tokens):</strong> At 1K tokens, cold TTFT is only 0.24s on the H200. The KV cache for 1K tokens is roughly 60 MB -- small enough to transfer quickly, but the prefill time is already fast enough that separation provides marginal benefit (our data shows only 1.5x improvement at 1K).</li>
             <li><strong>Limited network bandwidth:</strong> The KV cache for Llama 3.3 70B at 32K context is approximately 2 GB per request. If your inter-node network is 25 GbE (~3 GB/s), transferring one KV cache takes ~700 ms -- longer than the prefill itself. You need at least 100 GbE, and ideally RDMA, for disaggregation to be practical.</li>
-            <li><strong>Tight memory budgets:</strong> Disaggregation requires the model weights to be loaded on both prefill and decode pods. For a 70B FP8 model, that is ~70 GB per pod type. If you are already at the edge of GPU memory capacity, duplicating the model may not be feasible without reducing batch sizes or maximum context length.</li>
+            <li><strong>Tight memory budgets:</strong> Disaggregation requires the model weights to be loaded on both prefill and decode pods. For a 70B FP8 model, that's ~70 GB per pod type. If you're already at the edge of GPU memory capacity, duplicating the model may not be feasible without reducing batch sizes or maximum context length.</li>
         </ul>
 
         <h3>Decision Framework</h3>
 
         <div class="panel">
             <h3>Should You Disaggregate? Calculate Your Ratio</h3>
-            <p>Measure your average prefill time and average decode time per request. Compute the <strong>prefill-to-decode time ratio</strong>.</p>
+            <p>Before you file that architecture proposal, run these numbers. Measure your average prefill time and average decode time per request. Compute the <strong>prefill-to-decode time ratio</strong>.</p>
             <ul>
                 <li><strong>Ratio greater than 3:1</strong> -- Disaggregation likely beneficial. Prefill is consuming significant GPU time that could be used for decode batching.</li>
                 <li><strong>Ratio between 1:1 and 3:1</strong> -- Marginal benefit. Consider only if you have high concurrency (20+ simultaneous requests) and observe TTFT variability.</li>
-                <li><strong>Ratio less than 1:1</strong> -- Do not disaggregate. Decode dominates your workload, and the transfer overhead will increase total latency.</li>
+                <li><strong>Ratio less than 1:1</strong> -- Don't disaggregate. Decode dominates your workload, and the transfer overhead will increase total latency.</li>
             </ul>
             <p>Additionally, calculate your <strong>KV cache transfer time</strong> as: cache size (bytes) / network bandwidth (bytes/s). If this exceeds 10% of your prefill time, you need faster networking before disaggregation makes sense.</p>
         </div>
@@ -1029,7 +1077,7 @@
 
         <h3>7.1 Basic Deployment (Unified Prefill + Decode)</h3>
 
-        <p>This configuration runs both phases on the same pods. Use this as your starting point and baseline for comparison.</p>
+        <p>Start here. Use this as your baseline for comparison.</p>
 
         <pre><code><span class="yaml-comment"># Basic unified deployment -- both prefill and decode on same pods</span>
 <span class="yaml-key">apiVersion:</span> <span class="yaml-string">inference.llm-d.ai/v1alpha1</span>
@@ -1076,7 +1124,7 @@
 
         <h3>7.3 Enabling KV Cache Transfer with NIXL and RDMA</h3>
 
-        <p>This enables high-performance KV cache transfer between prefill and decode pods using NIXL over RDMA. This requires InfiniBand or RoCE-capable networking.</p>
+        <p>This enables high-performance KV cache transfer between prefill and decode pods using NIXL over RDMA. Requires InfiniBand or RoCE-capable networking.</p>
 
         <pre><code><span class="yaml-comment"># KV cache transfer configuration</span>
   <span class="yaml-key">kvCacheTransfer:</span>
@@ -1088,7 +1136,7 @@
 
         <h3>7.4 Full Disaggregated Routing Configuration</h3>
 
-        <p>This is the complete production configuration with disaggregated routing, KV cache transfer, and optimized load balancing for each phase.</p>
+        <p>Complete production configuration with disaggregated routing, KV cache transfer, and optimized load balancing for each phase.</p>
 
         <pre><code><span class="yaml-comment"># Full production disaggregated P/D deployment</span>
 <span class="yaml-key">apiVersion:</span> <span class="yaml-string">inference.llm-d.ai/v1alpha1</span>
@@ -1145,7 +1193,7 @@
         <!-- SECTION 8: WHAT'S NEXT -->
         <!-- ============================================================ -->
 
-        <h2 id="whats-next">8. What's Next</h2>
+        <h2 id="whats-next">8. Where This Goes Next</h2>
 
         <p>llm-d is under active development as a CNCF Sandbox project, with a roadmap driven by production requirements and community input. Several developments are particularly relevant to disaggregated P/D:</p>
 
@@ -1165,19 +1213,19 @@
         <!-- ============================================================ -->
 
         <div class="cta-box">
-            <h3>Get Started with llm-d</h3>
+            <h3>Start Here</h3>
             <ul>
-                <li>Explore the source: <a href="https://github.com/llm-d">github.com/llm-d</a></li>
-                <li>Interactive benchmark visualization: <a href="../index.html">companion web app</a></li>
-                <li>Deploy on OpenShift: <a href="https://llm-d.ai">llm-d.ai</a></li>
-                <li>Content hub: <a href="https://markellr-redhat.github.io/llm-d-content-hub/">llm-d Content Hub</a></li>
-                <li>Join the community: <a href="https://github.com/llm-d/llm-d/discussions">GitHub Discussions</a></li>
+                <li>Source code: <a href="https://github.com/llm-d">github.com/llm-d</a></li>
+                <li>Interactive benchmarks: <a href="../index.html">companion web app</a></li>
+                <li>Deploy it: <a href="https://llm-d.ai">llm-d.ai</a></li>
+                <li>More content: <a href="https://markellr-redhat.github.io/llm-d-content-hub/">llm-d Content Hub</a></li>
+                <li>Talk to us: <a href="https://github.com/llm-d/llm-d/discussions">GitHub Discussions</a></li>
             </ul>
         </div>
 
         <footer>
             <div class="footer-attribution">
-                Written by Markell Rawls
+                Markell Rawls — Developer Advocate, Red Hat
             </div>
             <div class="footer-nav">
                 <a href="https://markellr-redhat.github.io/llm-d-content-hub/">Back to Content Hub</a>

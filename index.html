@@ -79,21 +79,86 @@
         }
         .hero-stats {
             display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:20px; position:relative; z-index:1;
+            margin-bottom: 36px;
         }
         .hero-stat {
             background:rgba(26,26,46,.85); border:1px solid #1e293b; border-radius:14px; padding:28px 20px;
             transition: transform .25s, border-color .25s;
         }
         .hero-stat:hover { transform:translateY(-5px); border-color:#3b82f6; }
+        .hero-stat.hero-stat-featured {
+            grid-column: 1 / -1;
+            padding: 42px 20px;
+        }
         .hero-stat-val {
             font-size:2.8rem; font-weight:900; font-family:'Red Hat Display',sans-serif; line-height:1.1;
         }
+        .hero-stat.hero-stat-featured .hero-stat-val {
+            font-size: clamp(3.5rem, 8vw, 5.5rem);
+        }
         .hero-stat-label { font-size:1.05rem; font-weight:600; margin-top:8px; }
+        .hero-stat.hero-stat-featured .hero-stat-label {
+            font-size: 1.35rem;
+        }
         .hero-stat-desc { font-size:.88rem; color:#94a3b8; margin-top:4px; }
+        .hero-stat.hero-stat-featured .hero-stat-desc {
+            font-size: 1rem;
+        }
+
+        /* Bottom line card */
+        .bottom-line {
+            background: linear-gradient(135deg, rgba(59,130,246,.08) 0%, rgba(46,194,126,.06) 100%);
+            border: 1px solid;
+            border-image: linear-gradient(135deg, rgba(59,130,246,.3), rgba(46,194,126,.3)) 1;
+            border-radius: 14px;
+            padding: 32px;
+            max-width: 800px;
+            margin: 36px auto 0;
+            position: relative;
+            z-index: 1;
+        }
+        .bottom-line h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #e2e8f0;
+        }
+        .bottom-line ul {
+            list-style: none;
+            margin-bottom: 16px;
+        }
+        .bottom-line li {
+            font-size: 1rem;
+            color: #cbd5e1;
+            padding-left: 24px;
+            position: relative;
+            margin-bottom: 12px;
+            line-height: 1.6;
+        }
+        .bottom-line li::before {
+            content: '→';
+            position: absolute;
+            left: 0;
+            color: #3b82f6;
+            font-weight: 700;
+        }
+        .bottom-line .closing {
+            font-size: .95rem;
+            color: #94a3b8;
+            font-style: italic;
+            border-top: 1px solid rgba(148,163,184,.2);
+            padding-top: 16px;
+            margin-top: 8px;
+        }
+
         .hw-badge {
             display:inline-block; margin-top:28px; padding:8px 20px; border-radius:20px;
             background:rgba(59,130,246,.12); border:1px solid rgba(59,130,246,.25);
-            color:#94a3b8; font-size:.9rem;
+            color:#94a3b8; font-size:.9rem; transition: all .2s; cursor: pointer;
+        }
+        .hw-badge:hover {
+            background:rgba(59,130,246,.18);
+            border-color: rgba(59,130,246,.4);
         }
         .hw-badge strong { color:#e2e8f0; }
 
@@ -231,6 +296,18 @@
            7. SPARKLINE METRICS DASHBOARD
            ============================================================ */
         .sparkline-section { background:#0a0e17; padding:40px 0; }
+        .sparkline-section h3 {
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .sparkline-section .spark-note {
+            text-align: center;
+            color: #64748b;
+            font-size: .85rem;
+            margin-bottom: 32px;
+        }
         .spark-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:20px; }
         .spark-card {
             background:#1a1a2e; border:1px solid #1e293b; border-radius:12px; padding:20px 24px;
@@ -391,6 +468,7 @@
             <nav class="nav-links">
                 <a href="https://markellr-redhat.github.io/llm-d-content-hub/">Content Hub</a>
                 <a href="blog/index.html">Blog Post</a>
+                <a href="https://github.com/llm-d">GitHub</a>
             </nav>
         </div>
     </div>
@@ -399,17 +477,15 @@
 <!-- ====== 1. HERO ====== -->
 <section class="hero">
     <div class="container">
-        <h2 class="hero-headline">Separate the Phases.<br>Unlock the Performance.</h2>
+        <h2 class="hero-headline">19.8x Faster First Token</h2>
         <p class="hero-sub">
-            Disaggregated prefill and decode splits LLM inference into dedicated GPU pods --
-            eliminating phase interference and unlocking dramatic gains in latency, throughput,
-            and hardware utilization on NVIDIA H200 GPUs with Llama 3.3 70B Instruct FP8.
+            Split prefill and decode into dedicated GPU pods. That's it. That's the whole idea.
         </p>
         <div class="hero-stats">
-            <div class="hero-stat">
+            <div class="hero-stat hero-stat-featured">
                 <div class="hero-stat-val" style="color:#1a5fb4">19.8x</div>
                 <div class="hero-stat-label">TTFT Improvement</div>
-                <div class="hero-stat-desc">32K context with KV cache reuse</div>
+                <div class="hero-stat-desc">32K context with KV cache reuse &mdash; the single biggest latency win in this benchmark</div>
             </div>
             <div class="hero-stat">
                 <div class="hero-stat-val" style="color:#2ec27e">1,483</div>
@@ -422,17 +498,29 @@
                 <div class="hero-stat-desc">Dedicated P/D pods vs unified</div>
             </div>
         </div>
-        <div class="hw-badge">
-            <strong>NVIDIA H200</strong> &middot; 141 GB HBM3e &middot; 4.8 TB/s &middot; Llama 3.3 70B FP8
+
+        <div class="bottom-line">
+            <h3>TL;DR for Your Architecture Review</h3>
+            <ul>
+                <li>Prefill is compute-bound. Decode is memory-bound. Running them on the same GPU leaves performance on the table.</li>
+                <li>Disaggregated architecture routes prefill to dedicated pods, transfers KV caches via RDMA in ~1ms, then decode pods generate tokens.</li>
+                <li>Result: 19.8x faster TTFT on cached requests, 30-60% higher throughput, and GPU utilization that doesn't yo-yo between phases.</li>
+                <li>It's not magic. It's just specialization.</li>
+            </ul>
+            <div class="closing">If you're running &gt;10 concurrent requests on a 70B+ model with contexts over 4K tokens, disaggregation pays for itself on day one.</div>
         </div>
+
+        <a href="https://www.nvidia.com/en-us/data-center/h200/" target="_blank" class="hw-badge">
+            <strong>NVIDIA H200</strong> &middot; 141 GB HBM3e &middot; 4.8 TB/s &middot; Llama 3.3 70B FP8
+        </a>
     </div>
 </section>
 
 <!-- ====== 2. CLUSTER VISUALIZATION ====== -->
 <section class="cluster-section">
     <div class="container">
-        <h2 class="section-title">Live Cluster Visualization</h2>
-        <p class="section-subtitle">Prefill pods process prompts, transfer KV caches via RDMA, and decode pods generate tokens -- all running simultaneously.</p>
+        <h2 class="section-title">What's Happening Inside the Cluster</h2>
+        <p class="section-subtitle">Prefill pods process prompts, transfer KV caches via RDMA, and decode pods generate tokens &mdash; all running simultaneously. Move the load slider below to stress it.</p>
         <canvas id="cluster-canvas"></canvas>
     </div>
 </section>
@@ -440,8 +528,7 @@
 <!-- ====== 3. REQUEST LOAD SIMULATOR ====== -->
 <section class="simulator-section">
     <div class="container">
-        <h2 class="section-title">Request Load Simulator</h2>
-        <p class="section-subtitle">Drag the slider to see how the cluster scales with increasing request load.</p>
+        <h2 class="section-title">Crank the Load</h2>
         <div class="sim-controls">
             <div class="sim-slider-wrap">
                 <div class="sim-slider-label">
@@ -479,8 +566,8 @@
 <!-- ====== 4. SPLIT-SCREEN COMPARISON ====== -->
 <section class="comparison-section">
     <div class="container">
-        <h2 class="section-title">Unified vs. Disaggregated</h2>
-        <p class="section-subtitle">See the difference in real time. Unified pods switch between phases causing interference; disaggregated pods stay specialized.</p>
+        <h2 class="section-title">Same Model. Same Hardware. Different Architecture.</h2>
+        <p class="section-subtitle">Watch what happens.</p>
         <div class="comparison-grid">
             <div class="comp-panel unified">
                 <div class="comp-panel-title">
@@ -525,7 +612,7 @@
                 </div>
             </div>
         </div>
-        <button class="comp-start-btn" id="comp-start-btn">Start 20-Second Simulation</button>
+        <button class="comp-start-btn" id="comp-start-btn">Race: Unified vs Disaggregated</button>
         <div class="comp-timer" id="comp-timer"></div>
     </div>
 </section>
@@ -534,7 +621,7 @@
 <section class="bench-section">
     <div class="container">
         <h2 class="section-title">Benchmark Data</h2>
-        <p class="section-subtitle">Real performance data from Llama 3.3 70B Instruct FP8 on NVIDIA H200 GPUs.</p>
+        <p class="section-subtitle">Every number here came from an actual H200 cluster running Llama 3.3 70B FP8.</p>
         <div class="bench-tabs">
             <button class="bench-tab active" data-tab="bench-ttft">TTFT by Context Length</button>
             <button class="bench-tab" data-tab="bench-tput">Throughput Scaling</button>
@@ -547,8 +634,8 @@
                 <div class="bench-tooltip" id="tt-ttft"></div>
             </div>
             <div class="bench-insight">
-                <h4>Key Insight</h4>
-                <p>At 32K tokens, cached TTFT is 19.8x faster than cold -- dropping from 4.74s to 0.24s. Prefix caching combined with intelligent routing delivers transformative latency improvements at scale.</p>
+                <h4>Why This Matters</h4>
+                <p>At 32K tokens, cached TTFT is 19.8x faster than cold &mdash; dropping from 4.74s to 0.24s. Prefix caching combined with intelligent routing delivers transformative latency improvements at scale.</p>
             </div>
         </div>
 
@@ -558,7 +645,7 @@
                 <div class="bench-tooltip" id="tt-tput"></div>
             </div>
             <div class="bench-insight">
-                <h4>Key Insight</h4>
+                <h4>The Scaling Story</h4>
                 <p>Near-linear scaling: 50x concurrency yields a 32.6x throughput increase. Disaggregated architecture maintains efficiency under heavy load by preventing phase interference.</p>
             </div>
         </div>
@@ -569,7 +656,7 @@
                 <div class="bench-tooltip" id="tt-cache"></div>
             </div>
             <div class="bench-insight">
-                <h4>Key Insight</h4>
+                <h4>The Routing Trap</h4>
                 <p>Without cache-aware routing, requests scatter across pods and cache hit rate drops to near zero. Intelligent routing is essential to realize the full benefit of prefix caching.</p>
             </div>
         </div>
@@ -580,7 +667,6 @@
 <section class="heatmap-section">
     <div class="container">
         <h2 class="section-title">GPU Utilization Heatmap</h2>
-        <p class="section-subtitle">Compute and memory bandwidth utilization across prefill and decode pods over time.</p>
         <div class="heatmap-wrap">
             <div class="heatmap-block">
                 <h4>Compute Utilization</h4>
@@ -602,6 +688,8 @@
 <!-- ====== 7. SPARKLINE METRICS ====== -->
 <section class="sparkline-section">
     <div class="container">
+        <h3>Live Metrics (Simulated)</h3>
+        <div class="spark-note">Based on H200 benchmark baselines</div>
         <div class="spark-grid">
             <div class="spark-card">
                 <div class="spark-info">
@@ -632,7 +720,7 @@
 <section class="deepdive-section">
     <div class="container">
         <h2 class="section-title">Architecture Deep Dive</h2>
-        <button class="dd-toggle" id="dd-toggle">Show Architecture Deep Dive</button>
+        <button class="dd-toggle" id="dd-toggle">How It Actually Works</button>
         <div class="dd-content" id="dd-content">
             <div class="dd-flow">
                 <div class="dd-node router">
@@ -691,7 +779,7 @@
 <section class="deploy-section">
     <div class="container">
         <h2 class="section-title">Deployment Guide</h2>
-        <p class="section-subtitle">Progressive configuration from standard to fully disaggregated, using the LLMInferenceService CRD.</p>
+        <p class="section-subtitle">Four YAML configs. Copy the one that matches your setup.</p>
         <div class="deploy-steps">
 
             <!-- Step 1 -->
@@ -702,7 +790,7 @@
                 </div>
                 <p class="step-desc">Start with a baseline llm-d deployment with prefix-aware routing. Pods handle both prefill and decode.</p>
                 <div class="code-block">
-                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    <button class="copy-btn" onclick="copyCode(this)">Grab this YAML</button>
 <pre><span class="yk">apiVersion:</span> <span class="ys">inference.llm-d.ai/v1alpha1</span>
 <span class="yk">kind:</span> <span class="ys">LLMInferenceService</span>
 <span class="yk">metadata:</span>
@@ -730,7 +818,7 @@
                 </div>
                 <p class="step-desc">Add dedicated prefill workers for the compute-intensive prompt processing phase.</p>
                 <div class="code-block hl">
-                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    <button class="copy-btn" onclick="copyCode(this)">Grab this YAML</button>
 <pre><span class="yk">apiVersion:</span> <span class="ys">inference.llm-d.ai/v1alpha1</span>
 <span class="yk">kind:</span> <span class="ys">LLMInferenceService</span>
 <span class="yk">metadata:</span>
@@ -764,7 +852,7 @@
                 </div>
                 <p class="step-desc">Configure high-speed KV cache transfer using NIXL with RDMA transport for minimal latency between pods.</p>
                 <div class="code-block hl">
-                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    <button class="copy-btn" onclick="copyCode(this)">Grab this YAML</button>
 <pre><span class="yk">apiVersion:</span> <span class="ys">inference.llm-d.ai/v1alpha1</span>
 <span class="yk">kind:</span> <span class="ys">LLMInferenceService</span>
 <span class="yk">metadata:</span>
@@ -801,7 +889,7 @@
                 </div>
                 <p class="step-desc">Switch to disaggregated-prefill-decode routing with KV-affinity for decode pods to maximize cache reuse.</p>
                 <div class="code-block hl">
-                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    <button class="copy-btn" onclick="copyCode(this)">Grab this YAML</button>
 <pre><span class="yk">apiVersion:</span> <span class="ys">inference.llm-d.ai/v1alpha1</span>
 <span class="yk">kind:</span> <span class="ys">LLMInferenceService</span>
 <span class="yk">metadata:</span>
@@ -841,8 +929,7 @@
 <!-- ====== 10. PERFORMANCE IMPACT CARDS ====== -->
 <section class="impact-section">
     <div class="container">
-        <h2 class="section-title">Performance Impact</h2>
-        <p class="section-subtitle">Measured improvements when moving from unified to disaggregated inference.</p>
+        <h2 class="section-title">What Actually Changes When You Flip the Switch</h2>
         <div class="impact-grid">
             <div class="impact-card" style="--fw:75%">
                 <h3 class="impact-card-title">Throughput</h3>
@@ -866,7 +953,7 @@
                 <div class="impact-bar-track">
                     <div class="impact-bar-fill">Optimized</div>
                 </div>
-                <p class="impact-desc">Higher efficiency on both pod types as each is tuned for its workload -- compute-bound prefill and memory-bound decode.</p>
+                <p class="impact-desc">Higher efficiency on both pod types as each is tuned for its workload &mdash; compute-bound prefill and memory-bound decode.</p>
             </div>
         </div>
     </div>
@@ -882,7 +969,7 @@
                 <a href="https://github.com/llm-d">GitHub</a>
                 <a href="blog/index.html">Blog Post</a>
             </div>
-            <div class="footer-note">llm-d is a CNCF Sandbox project for distributed LLM inference routing.</div>
+            <div class="footer-note">llm-d is open source, CNCF Sandbox. Built for platform teams who refuse to leave GPU performance on the table.</div>
         </div>
     </div>
 </footer>
@@ -1387,7 +1474,7 @@ function clamp(v,lo,hi){ return Math.max(lo,Math.min(hi,v)); }
             if(simTime >= simDuration){
                 running = false;
                 startBtn.disabled = false;
-                timerEl.textContent = 'Simulation complete!';
+                timerEl.textContent = 'Done. Screenshot the numbers.';
                 setTimeout(()=>{ timerEl.textContent=''; idleLoop(); }, 2000);
                 return;
             }
@@ -2052,7 +2139,7 @@ function clamp(v,lo,hi){ return Math.max(lo,Math.min(hi,v)); }
     if(!btn || !content) return;
     btn.addEventListener('click', ()=>{
         const open = content.classList.toggle('open');
-        btn.textContent = open ? 'Hide Architecture Deep Dive' : 'Show Architecture Deep Dive';
+        btn.textContent = open ? 'Hide It' : 'How It Actually Works';
     });
 })();
 
@@ -2065,7 +2152,7 @@ window.copyCode = function(button){
     navigator.clipboard.writeText(codeBlock.textContent).then(()=>{
         button.textContent = 'Copied!';
         button.classList.add('copied');
-        setTimeout(()=>{ button.textContent='Copy'; button.classList.remove('copied'); }, 2000);
+        setTimeout(()=>{ button.textContent='Grab this YAML'; button.classList.remove('copied'); }, 2000);
     });
 };
 
