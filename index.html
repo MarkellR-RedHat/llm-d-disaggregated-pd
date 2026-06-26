@@ -3,1568 +3,2085 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Deploying llm-d with Disaggregated Prefill &amp; Decode</title>
+    <title>Disaggregated Prefill &amp; Decode | llm-d</title>
     <link rel="icon" type="image/png" href="https://llm-d.ai/img/llm-d-icon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@500;600;700;900&family=Red+Hat+Text:wght@400;500;600&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        /* ============================================================
+           RESET & BASE
+           ============================================================ */
+        *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+        html { scroll-behavior: smooth; }
         body {
             font-family: 'Red Hat Text', sans-serif;
-            background: #0a0a0f;
+            background: #0a0e17;
             color: #e2e8f0;
             line-height: 1.6;
+            overflow-x: hidden;
         }
+        h1,h2,h3,h4,h5 { font-family: 'Red Hat Display', sans-serif; }
+        a { color: #3b82f6; text-decoration: none; transition: color .2s; }
+        a:hover { color: #60a5fa; }
+        .container { max-width: 1260px; margin: 0 auto; padding: 0 24px; }
 
-        h1, h2, h3, h4 {
-            font-family: 'Red Hat Display', sans-serif;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
-
-        /* Header */
+        /* ============================================================
+           HEADER
+           ============================================================ */
         header {
             background: rgba(26,26,46,.92);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
             border-bottom: 1px solid #1e293b;
-            padding: 20px 0;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-
-        .header-content {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 20px;
-        }
-
-        .logo-title {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .logo-title img {
-            height: 40px;
-            width: 40px;
-        }
-
-        .logo-title h1 {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #e2e8f0;
-        }
-
-        .header-links {
-            display: flex;
-            gap: 20px;
-            align-items: center;
-        }
-
-        .header-links a {
-            color: #94a3b8;
-            text-decoration: none;
-            font-weight: 500;
-            transition: color 0.2s;
-        }
-
-        .header-links a:hover {
-            color: #3b82f6;
-        }
-
-        /* Hero */
-        .hero {
-            padding: 80px 0;
-            text-align: center;
-        }
-
-        .hero h2 {
-            font-size: 3rem;
-            font-weight: 900;
-            margin-bottom: 20px;
-            background: linear-gradient(135deg, #1a5fb4, #2ec27e);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .hero-subtitle {
-            font-size: 1.25rem;
-            color: #94a3b8;
-            max-width: 700px;
-            margin: 0 auto 60px;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-top: 40px;
-        }
-
-        .stat-card {
-            background: #1a1a2e;
-            border: 1px solid #1e293b;
-            border-radius: 12px;
-            padding: 30px;
-            transition: transform 0.2s, border-color 0.2s;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-4px);
-            border-color: #3b82f6;
-        }
-
-        .stat-value {
-            font-size: 3rem;
-            font-weight: 900;
-            color: #3b82f6;
-            font-family: 'Red Hat Display', sans-serif;
-        }
-
-        .stat-label {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #e2e8f0;
-            margin-top: 10px;
-        }
-
-        .stat-description {
-            font-size: 0.9rem;
-            color: #94a3b8;
-            margin-top: 5px;
-        }
-
-        /* Sections */
-        section {
-            padding: 80px 0;
-        }
-
-        section h2 {
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 40px;
-            text-align: center;
-        }
-
-        /* Section 1: Phase Animation */
-        .phase-panels {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 30px;
-            margin-bottom: 40px;
-        }
-
-        .phase-panel {
-            background: #1a1a2e;
-            border: 2px solid;
-            border-radius: 12px;
-            padding: 30px;
-        }
-
-        .phase-panel.prefill {
-            border-color: #1a5fb4;
-        }
-
-        .phase-panel.decode {
-            border-color: #2ec27e;
-        }
-
-        .phase-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .phase-badge {
-            padding: 4px 12px;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        .phase-panel.prefill .phase-badge {
-            background: #1a5fb4;
-            color: #fff;
-        }
-
-        .phase-panel.decode .phase-badge {
-            background: #2ec27e;
-            color: #fff;
-        }
-
-        .phase-description {
-            font-size: 1.1rem;
-            color: #94a3b8;
-            margin-bottom: 30px;
-        }
-
-        .token-visualization {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 8px;
-            padding: 30px;
-            margin-bottom: 30px;
-            min-height: 150px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .token-grid {
-            display: grid;
-            grid-template-columns: repeat(10, 1fr);
-            gap: 8px;
-            width: 100%;
-        }
-
-        .token {
-            aspect-ratio: 1;
-            border-radius: 4px;
-            background: #1a5fb4;
-            opacity: 0;
-            animation: tokenAppearAll 2s ease-in-out infinite;
-        }
-
-        .token:nth-child(n) {
-            animation-delay: calc(var(--i) * 0.02s);
-        }
-
-        @keyframes tokenAppearAll {
-            0%, 20% { opacity: 0; transform: scale(0.8); }
-            30%, 90% { opacity: 1; transform: scale(1); }
-            100% { opacity: 0; transform: scale(0.8); }
-        }
-
-        .token-sequence {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .token-sequential {
-            width: 40px;
-            height: 40px;
-            border-radius: 4px;
-            background: #2ec27e;
-            opacity: 0;
-            animation: tokenAppearSequential 4s ease-in-out infinite;
-        }
-
-        @keyframes tokenAppearSequential {
-            0% { opacity: 0; transform: translateX(-20px) scale(0.8); }
-            10% { opacity: 1; transform: translateX(0) scale(1); }
-            90% { opacity: 1; transform: translateX(0) scale(1); }
-            100% { opacity: 0; transform: translateX(20px) scale(0.8); }
-        }
-
-        .utilization-bars {
-            margin-bottom: 20px;
-        }
-
-        .util-bar {
-            margin-bottom: 15px;
-        }
-
-        .util-label {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.9rem;
-            color: #94a3b8;
-            margin-bottom: 5px;
-        }
-
-        .util-track {
-            height: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
-            overflow: hidden;
-        }
-
-        .util-fill {
-            height: 100%;
-            border-radius: 4px;
-            transition: width 0.3s ease-out;
-        }
-
-        .prefill .util-fill {
-            background: #1a5fb4;
-        }
-
-        .decode .util-fill {
-            background: #2ec27e;
-        }
-
-        .util-fill.compute-high {
-            width: 95%;
-            animation: pulse 2s ease-in-out infinite;
-        }
-
-        .util-fill.compute-low {
-            width: 15%;
-            animation: pulse 2s ease-in-out infinite;
-        }
-
-        .util-fill.memory-moderate {
-            width: 55%;
-            animation: pulse 2s ease-in-out infinite 0.5s;
-        }
-
-        .util-fill.memory-high {
-            width: 90%;
-            animation: pulse 2s ease-in-out infinite 0.5s;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-
-        .phase-label {
-            font-weight: 600;
-            color: #e2e8f0;
-            text-align: center;
-            padding: 15px;
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        .key-insight {
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(155, 77, 155, 0.1));
-            border-left: 4px solid #9b4d9b;
-            padding: 25px;
-            border-radius: 8px;
-            margin-top: 40px;
-        }
-
-        .key-insight h3 {
-            font-size: 1.3rem;
-            margin-bottom: 15px;
-            color: #e2e8f0;
-        }
-
-        .key-insight p {
-            font-size: 1.1rem;
-            color: #94a3b8;
-            line-height: 1.8;
-        }
-
-        /* Section 2: Architecture Comparison */
-        .architecture-comparison {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
-            gap: 40px;
-            margin-top: 40px;
-        }
-
-        .architecture-panel {
-            background: #1a1a2e;
-            border: 1px solid #1e293b;
-            border-radius: 12px;
-            padding: 30px;
-        }
-
-        .architecture-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin-bottom: 10px;
-        }
-
-        .architecture-description {
-            color: #94a3b8;
-            margin-bottom: 30px;
-        }
-
-        .architecture-viz {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 8px;
-            padding: 40px 20px;
-            min-height: 300px;
-        }
-
-        .gpu-pods {
-            display: flex;
-            flex-direction: column;
-            gap: 30px;
-            align-items: center;
-        }
-
-        .gpu-pod {
-            width: 200px;
-            height: 80px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            font-size: 0.9rem;
-            position: relative;
-        }
-
-        .standard-pod {
-            background: linear-gradient(135deg, #1a5fb4, #2ec27e);
-            animation: alternatePhases 4s ease-in-out infinite;
-        }
-
-        @keyframes alternatePhases {
-            0%, 45% { background: linear-gradient(135deg, #1a5fb4, #1a5fb4); }
-            50%, 95% { background: linear-gradient(135deg, #2ec27e, #2ec27e); }
-            100% { background: linear-gradient(135deg, #1a5fb4, #1a5fb4); }
-        }
-
-        .disaggregated-section {
-            display: flex;
-            gap: 40px;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .pod-group {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        .prefill-pod {
-            background: #1a5fb4;
-            width: 150px;
-            height: 60px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            font-size: 0.85rem;
-            animation: pulseGlow 2s ease-in-out infinite;
-        }
-
-        .decode-pod {
-            background: #2ec27e;
-            width: 150px;
-            height: 60px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            font-size: 0.85rem;
-            animation: pulseGlow 2s ease-in-out infinite 1s;
-        }
-
-        @keyframes pulseGlow {
-            0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
-            50% { box-shadow: 0 0 30px rgba(59, 130, 246, 0.6); }
-        }
-
-        .kv-transfer {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .transfer-arrow {
-            width: 80px;
-            height: 4px;
-            background: #9b4d9b;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .transfer-arrow::after {
-            content: '';
-            position: absolute;
-            width: 20px;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, #fff, transparent);
-            animation: transferFlow 2s linear infinite;
-        }
-
-        @keyframes transferFlow {
-            0% { left: -20px; }
-            100% { left: 100%; }
-        }
-
-        .transfer-arrow::before {
-            content: '→';
-            position: absolute;
-            right: -10px;
-            top: -8px;
-            color: #9b4d9b;
-            font-size: 1.2rem;
-        }
-
-        .transfer-label {
-            font-size: 0.8rem;
-            color: #9b4d9b;
-            font-weight: 600;
-            text-align: center;
-        }
-
-        /* Section 3: Benchmarks */
-        .tabs {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 30px;
-            border-bottom: 2px solid #1e293b;
-            flex-wrap: wrap;
-        }
-
-        .tab {
-            padding: 15px 25px;
-            background: transparent;
-            border: none;
-            color: #94a3b8;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            border-bottom: 3px solid transparent;
-            transition: all 0.2s;
-            font-family: 'Red Hat Text', sans-serif;
-        }
-
-        .tab:hover {
-            color: #e2e8f0;
-        }
-
-        .tab.active {
-            color: #3b82f6;
-            border-bottom-color: #3b82f6;
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        .chart-container {
-            background: #1a1a2e;
-            border: 1px solid #1e293b;
-            border-radius: 12px;
-            padding: 30px;
-            margin-bottom: 30px;
-        }
-
-        .chart-wrapper {
-            position: relative;
-            height: 400px;
-        }
-
-        .insight-callout {
-            background: rgba(59, 130, 246, 0.1);
-            border-left: 4px solid #3b82f6;
-            padding: 20px;
-            border-radius: 8px;
-            margin-top: 20px;
-        }
-
-        .insight-callout h4 {
-            font-size: 1.1rem;
-            margin-bottom: 10px;
-            color: #3b82f6;
-        }
-
-        .insight-callout p {
-            color: #94a3b8;
-        }
-
-        /* Section 4: Deployment Guide */
-        .deployment-steps {
-            display: flex;
-            flex-direction: column;
-            gap: 40px;
-        }
-
-        .deployment-step {
-            background: #1a1a2e;
-            border: 1px solid #1e293b;
-            border-radius: 12px;
-            padding: 30px;
-            position: relative;
-        }
-
-        .step-header {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .step-number {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #1a5fb4, #9b4d9b);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 1.2rem;
-        }
-
-        .step-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-        }
-
-        .step-description {
-            color: #94a3b8;
-            margin-bottom: 20px;
-            line-height: 1.8;
-        }
-
+            padding: 16px 0;
+            position: sticky; top: 0; z-index: 200;
+        }
+        .header-inner { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; }
+        .logo-area { display:flex; align-items:center; gap:12px; }
+        .logo-area img { height:36px; width:36px; }
+        .logo-area h1 { font-size:1.25rem; font-weight:700; color:#e2e8f0; white-space:nowrap; }
+        .nav-links { display:flex; gap:20px; align-items:center; }
+        .nav-links a { color:#94a3b8; font-weight:500; font-size:.95rem; }
+        .nav-links a:hover { color:#3b82f6; }
+
+        /* ============================================================
+           SECTION SHARED
+           ============================================================ */
+        section { padding: 80px 0; }
+        .section-title {
+            font-size: 2.25rem; font-weight: 700; text-align: center; margin-bottom: 16px;
+        }
+        .section-subtitle {
+            text-align:center; color:#94a3b8; font-size:1.1rem; max-width:700px; margin:0 auto 48px;
+        }
+        .card {
+            background: #1a1a2e; border: 1px solid #1e293b; border-radius: 14px;
+        }
+
+        /* ============================================================
+           1. HERO
+           ============================================================ */
+        .hero { padding: 100px 0 80px; text-align:center; position:relative; overflow:hidden; }
+        .hero::before {
+            content:''; position:absolute; top:-50%; left:-50%; width:200%; height:200%;
+            background: radial-gradient(circle at 50% 80%, rgba(26,95,180,.12) 0%, transparent 50%),
+                        radial-gradient(circle at 30% 20%, rgba(46,194,126,.08) 0%, transparent 40%);
+            pointer-events:none;
+        }
+        .hero-headline {
+            font-size: clamp(2.2rem, 5vw, 3.8rem); font-weight: 900; line-height:1.15; margin-bottom:20px;
+            background: linear-gradient(135deg, #3b82f6 0%, #2ec27e 40%, #9b4d9b 100%);
+            -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+        }
+        .hero-sub {
+            font-size:1.2rem; color:#94a3b8; max-width:740px; margin:0 auto 56px; line-height:1.7;
+        }
+        .hero-stats {
+            display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:20px; position:relative; z-index:1;
+        }
+        .hero-stat {
+            background:rgba(26,26,46,.85); border:1px solid #1e293b; border-radius:14px; padding:28px 20px;
+            transition: transform .25s, border-color .25s;
+        }
+        .hero-stat:hover { transform:translateY(-5px); border-color:#3b82f6; }
+        .hero-stat-val {
+            font-size:2.8rem; font-weight:900; font-family:'Red Hat Display',sans-serif; line-height:1.1;
+        }
+        .hero-stat-label { font-size:1.05rem; font-weight:600; margin-top:8px; }
+        .hero-stat-desc { font-size:.88rem; color:#94a3b8; margin-top:4px; }
+        .hw-badge {
+            display:inline-block; margin-top:28px; padding:8px 20px; border-radius:20px;
+            background:rgba(59,130,246,.12); border:1px solid rgba(59,130,246,.25);
+            color:#94a3b8; font-size:.9rem;
+        }
+        .hw-badge strong { color:#e2e8f0; }
+
+        /* ============================================================
+           2. CLUSTER VISUALIZATION
+           ============================================================ */
+        .cluster-section { padding-top:40px; background: linear-gradient(180deg, #0a0e17 0%, #0d1220 100%); }
+        #cluster-canvas {
+            width:100%; height:520px; display:block; border-radius:14px;
+            background: #0d1220; border:1px solid #1e293b;
+        }
+
+        /* ============================================================
+           3. REQUEST LOAD SIMULATOR
+           ============================================================ */
+        .simulator-section { background: #0d1220; padding-bottom:40px; }
+        .sim-controls {
+            display:flex; flex-wrap:wrap; align-items:center; gap:24px; justify-content:center;
+            margin-bottom:32px;
+        }
+        .sim-slider-wrap { flex:1; min-width:280px; max-width:500px; }
+        .sim-slider-label { display:flex; justify-content:space-between; margin-bottom:8px; font-weight:600; }
+        .sim-slider-label span:last-child { color:#3b82f6; font-size:1.1rem; }
+        input[type=range] {
+            -webkit-appearance:none; width:100%; height:8px; border-radius:4px;
+            background: linear-gradient(90deg,#1a5fb4,#2ec27e); outline:none; cursor:pointer;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance:none; width:22px; height:22px; border-radius:50%;
+            background:#e2e8f0; border:3px solid #3b82f6; cursor:pointer;
+            box-shadow:0 0 12px rgba(59,130,246,.5);
+        }
+        input[type=range]::-moz-range-thumb {
+            width:22px; height:22px; border-radius:50%;
+            background:#e2e8f0; border:3px solid #3b82f6; cursor:pointer;
+        }
+        .sim-metrics {
+            display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px;
+        }
+        .sim-metric {
+            background:#1a1a2e; border:1px solid #1e293b; border-radius:10px; padding:16px; text-align:center;
+        }
+        .sim-metric-val { font-size:1.5rem; font-weight:700; font-family:'Red Hat Display',sans-serif; color:#3b82f6; }
+        .sim-metric-label { font-size:.82rem; color:#94a3b8; margin-top:4px; }
+
+        /* ============================================================
+           4. SPLIT-SCREEN COMPARISON
+           ============================================================ */
+        .comparison-section { background:#0a0e17; }
+        .comparison-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+        .comp-panel { padding:28px; border-radius:14px; }
+        .comp-panel.unified { background:rgba(239,68,68,.06); border:1px solid rgba(239,68,68,.2); }
+        .comp-panel.disagg  { background:rgba(46,194,126,.06); border:1px solid rgba(46,194,126,.2); }
+        .comp-panel-title {
+            font-size:1.3rem; font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:10px;
+        }
+        .comp-badge {
+            font-size:.7rem; padding:3px 10px; border-radius:4px; text-transform:uppercase; font-weight:700;
+        }
+        .comp-badge.bad  { background:#ef4444; color:#fff; }
+        .comp-badge.good { background:#2ec27e; color:#fff; }
+        .comp-panel-desc { color:#94a3b8; font-size:.92rem; margin-bottom:20px; }
+        .comp-mini-canvas { width:100%; height:140px; border-radius:8px; background:rgba(0,0,0,.3); display:block; margin-bottom:16px; }
+        .comp-metrics { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+        .comp-met { text-align:center; }
+        .comp-met-val { font-size:1.3rem; font-weight:700; font-family:'Red Hat Display',sans-serif; }
+        .comp-met-label { font-size:.75rem; color:#94a3b8; }
+        .comp-start-btn {
+            display:block; margin:32px auto 0; padding:14px 36px; border:none; border-radius:10px;
+            background: linear-gradient(135deg,#1a5fb4,#2ec27e); color:#fff; font-size:1.05rem;
+            font-weight:700; cursor:pointer; font-family:'Red Hat Text',sans-serif;
+            transition: transform .2s, box-shadow .2s;
+        }
+        .comp-start-btn:hover { transform:translateY(-2px); box-shadow:0 6px 24px rgba(59,130,246,.3); }
+        .comp-start-btn:disabled { opacity:.5; cursor:default; transform:none; box-shadow:none; }
+        .comp-timer { text-align:center; margin-top:12px; color:#94a3b8; font-size:.9rem; height:20px; }
+
+        /* ============================================================
+           5. BENCHMARK CHARTS
+           ============================================================ */
+        .bench-section { background:#0a0e17; }
+        .bench-tabs { display:flex; gap:8px; margin-bottom:28px; border-bottom:2px solid #1e293b; flex-wrap:wrap; }
+        .bench-tab {
+            padding:14px 22px; background:transparent; border:none; color:#94a3b8; font-size:.95rem;
+            font-weight:600; cursor:pointer; border-bottom:3px solid transparent; transition:all .2s;
+            font-family:'Red Hat Text',sans-serif;
+        }
+        .bench-tab:hover { color:#e2e8f0; }
+        .bench-tab.active { color:#3b82f6; border-bottom-color:#3b82f6; }
+        .bench-panel { display:none; }
+        .bench-panel.active { display:block; }
+        .bench-chart-wrap {
+            background:#1a1a2e; border:1px solid #1e293b; border-radius:14px; padding:28px; position:relative;
+        }
+        .bench-canvas { width:100%; height:380px; display:block; }
+        .bench-tooltip {
+            position:absolute; background:#1a1a2e; border:1px solid #3b82f6; border-radius:8px;
+            padding:10px 14px; pointer-events:none; opacity:0; transition:opacity .15s; z-index:10;
+            font-size:.85rem; white-space:nowrap;
+        }
+        .bench-tooltip .tt-title { color:#e2e8f0; font-weight:600; margin-bottom:4px; }
+        .bench-tooltip .tt-val { color:#94a3b8; }
+        .bench-insight {
+            background:rgba(59,130,246,.08); border-left:4px solid #3b82f6; padding:18px 22px;
+            border-radius:8px; margin-top:20px;
+        }
+        .bench-insight h4 { color:#3b82f6; font-size:1rem; margin-bottom:6px; }
+        .bench-insight p { color:#94a3b8; font-size:.92rem; }
+
+        /* ============================================================
+           6. GPU UTILIZATION HEATMAP
+           ============================================================ */
+        .heatmap-section { background:#0d1220; }
+        .heatmap-wrap { display:grid; grid-template-columns:1fr 1fr; gap:28px; }
+        .heatmap-block { }
+        .heatmap-block h4 { font-size:1.05rem; margin-bottom:12px; text-align:center; }
+        .heatmap-grid { display:grid; gap:3px; }
+        .hm-row { display:flex; align-items:center; gap:3px; }
+        .hm-label { width:100px; font-size:.78rem; color:#94a3b8; text-align:right; padding-right:8px; flex-shrink:0; }
+        .hm-cells { display:flex; gap:3px; flex:1; }
+        .hm-cell {
+            flex:1; aspect-ratio:1; border-radius:3px; transition:background .4s;
+            min-width:0;
+        }
+        .hm-time-labels { display:flex; gap:3px; margin-left:103px; margin-top:4px; }
+        .hm-time-label { flex:1; font-size:.65rem; color:#64748b; text-align:center; }
+        .heatmap-legend { display:flex; align-items:center; justify-content:center; gap:8px; margin-top:20px; }
+        .hm-legend-bar {
+            width:200px; height:12px; border-radius:3px;
+            background: linear-gradient(90deg, #0c1a3a, #1a3a7a, #3b82f6, #60a5fa, #e0f0ff);
+        }
+        .hm-legend-label { font-size:.75rem; color:#94a3b8; }
+
+        /* ============================================================
+           7. SPARKLINE METRICS DASHBOARD
+           ============================================================ */
+        .sparkline-section { background:#0a0e17; padding:40px 0; }
+        .spark-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:20px; }
+        .spark-card {
+            background:#1a1a2e; border:1px solid #1e293b; border-radius:12px; padding:20px 24px;
+            display:flex; align-items:center; gap:20px;
+        }
+        .spark-info { flex-shrink:0; }
+        .spark-label { font-size:.85rem; color:#94a3b8; }
+        .spark-val { font-size:1.6rem; font-weight:700; font-family:'Red Hat Display',sans-serif; }
+        .spark-canvas { flex:1; height:50px; display:block; }
+
+        /* ============================================================
+           8. ARCHITECTURE DEEP DIVE
+           ============================================================ */
+        .deepdive-section { background:#0d1220; }
+        .dd-toggle {
+            display:block; margin:0 auto 28px; padding:14px 32px; border:2px solid #3b82f6; border-radius:10px;
+            background:transparent; color:#3b82f6; font-size:1rem; font-weight:700; cursor:pointer;
+            font-family:'Red Hat Text',sans-serif; transition:all .2s;
+        }
+        .dd-toggle:hover { background:rgba(59,130,246,.1); }
+        .dd-content { display:none; }
+        .dd-content.open { display:block; }
+        .dd-flow {
+            display:flex; align-items:center; justify-content:center; gap:0; flex-wrap:wrap;
+            padding:40px 0;
+        }
+        .dd-node {
+            background:#1a1a2e; border:2px solid #1e293b; border-radius:12px; padding:20px 24px;
+            min-width:170px; text-align:center; position:relative;
+        }
+        .dd-node h5 { font-size:.95rem; margin-bottom:6px; }
+        .dd-node p { font-size:.78rem; color:#94a3b8; line-height:1.4; }
+        .dd-node.router { border-color:#3b82f6; }
+        .dd-node.prefill-node { border-color:#1a5fb4; }
+        .dd-node.decode-node { border-color:#2ec27e; }
+        .dd-node.transfer-node { border-color:#9b4d9b; }
+        .dd-arrow {
+            width:60px; height:4px; background:#1e293b; position:relative; flex-shrink:0;
+            overflow:hidden;
+        }
+        .dd-arrow::after {
+            content:''; position:absolute; width:20px; height:100%;
+            background:linear-gradient(90deg,transparent,#3b82f6,transparent);
+            animation: ddFlow 1.5s linear infinite;
+        }
+        @keyframes ddFlow { 0%{left:-20px} 100%{left:100%} }
+        .dd-arrow-label {
+            font-size:.7rem; color:#94a3b8; text-align:center; margin-top:-8px; position:relative; z-index:1;
+        }
+        .dd-detail-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:20px; margin-top:32px; }
+        .dd-detail {
+            background:#1a1a2e; border:1px solid #1e293b; border-radius:12px; padding:24px;
+        }
+        .dd-detail h4 { font-size:1rem; margin-bottom:8px; }
+        .dd-detail p { font-size:.88rem; color:#94a3b8; line-height:1.6; }
+
+        /* ============================================================
+           9. DEPLOYMENT GUIDE
+           ============================================================ */
+        .deploy-section { background:#0a0e17; }
+        .deploy-steps { display:flex; flex-direction:column; gap:36px; }
+        .deploy-step { background:#1a1a2e; border:1px solid #1e293b; border-radius:14px; padding:28px; }
+        .step-head { display:flex; align-items:center; gap:14px; margin-bottom:16px; }
+        .step-num {
+            width:38px; height:38px; border-radius:50%; flex-shrink:0;
+            background:linear-gradient(135deg,#1a5fb4,#9b4d9b); display:flex; align-items:center;
+            justify-content:center; font-weight:700; font-size:1.1rem;
+        }
+        .step-title { font-size:1.35rem; font-weight:700; }
+        .step-desc { color:#94a3b8; margin-bottom:16px; line-height:1.7; }
         .code-block {
-            position: relative;
-            background: #0a0a0f;
-            border: 1px solid #1e293b;
-            border-radius: 8px;
-            padding: 20px;
-            margin-top: 15px;
-            overflow-x: auto;
+            position:relative; background:#080c15; border:1px solid #1e293b; border-radius:10px;
+            padding:20px; overflow-x:auto;
         }
-
-        .code-block.highlight {
-            border-left: 4px solid #3b82f6;
-        }
-
-        .copy-button {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            padding: 8px 16px;
-            background: #3b82f6;
-            border: none;
-            border-radius: 6px;
-            color: #fff;
-            font-weight: 600;
-            cursor: pointer;
-            font-size: 0.85rem;
-            transition: background 0.2s;
-            font-family: 'Red Hat Text', sans-serif;
-        }
-
-        .copy-button:hover {
-            background: #2563eb;
-        }
-
-        .copy-button.copied {
-            background: #2ec27e;
-        }
-
+        .code-block.hl { border-left:4px solid #3b82f6; }
         pre {
-            margin: 0;
-            font-family: 'Monaco', 'Menlo', monospace;
-            font-size: 0.9rem;
-            line-height: 1.6;
-            color: #e2e8f0;
+            margin:0; font-family:'Monaco','Menlo','Consolas',monospace; font-size:.88rem; line-height:1.55; color:#e2e8f0;
         }
-
-        .yaml-key {
-            color: #3b82f6;
+        .yk { color:#3b82f6; }   /* yaml key */
+        .ys { color:#2ec27e; }   /* yaml string */
+        .yn { color:#9b4d9b; }   /* yaml number */
+        .copy-btn {
+            position:absolute; top:10px; right:10px; padding:7px 14px; background:#3b82f6; border:none;
+            border-radius:6px; color:#fff; font-weight:600; cursor:pointer; font-size:.82rem;
+            font-family:'Red Hat Text',sans-serif; transition:background .2s;
         }
+        .copy-btn:hover { background:#2563eb; }
+        .copy-btn.copied { background:#2ec27e; }
 
-        .yaml-string {
-            color: #2ec27e;
-        }
-
-        .yaml-number {
-            color: #9b4d9b;
-        }
-
-        /* Section 5: Performance Impact */
-        .impact-cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 30px;
-            margin-top: 40px;
-        }
-
+        /* ============================================================
+           10. PERFORMANCE IMPACT CARDS
+           ============================================================ */
+        .impact-section { background:#0d1220; }
+        .impact-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:24px; }
         .impact-card {
-            background: #1a1a2e;
-            border: 1px solid #1e293b;
-            border-radius: 12px;
-            padding: 30px;
-            text-align: center;
+            background:#1a1a2e; border:1px solid #1e293b; border-radius:14px; padding:30px; text-align:center;
         }
-
-        .impact-title {
-            font-size: 1.3rem;
-            font-weight: 700;
-            margin-bottom: 15px;
+        .impact-card-title { font-size:1.15rem; font-weight:700; margin-bottom:12px; }
+        .impact-card-val {
+            font-size:2.4rem; font-weight:900; color:#3b82f6; font-family:'Red Hat Display',sans-serif;
+            margin-bottom:18px;
         }
-
-        .impact-value {
-            font-size: 2.5rem;
-            font-weight: 900;
-            color: #3b82f6;
-            margin-bottom: 20px;
-            font-family: 'Red Hat Display', sans-serif;
+        .impact-bar-track {
+            height:36px; background:rgba(255,255,255,.07); border-radius:8px; overflow:hidden; margin-bottom:18px;
         }
-
-        .impact-bar {
-            height: 40px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            overflow: hidden;
-            margin-bottom: 20px;
-        }
-
         .impact-bar-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #1a5fb4, #2ec27e);
-            width: 0;
-            transition: width 1.5s ease-out;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #fff;
-            font-weight: 700;
+            height:100%; width:0; border-radius:8px;
+            background:linear-gradient(90deg,#1a5fb4,#2ec27e);
+            display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:.85rem;
+            transition: width 1.4s cubic-bezier(.22,.61,.36,1);
         }
+        .impact-card.visible .impact-bar-fill { width: var(--fw); }
+        .impact-desc { color:#94a3b8; font-size:.9rem; line-height:1.7; }
 
-        .impact-card.visible .impact-bar-fill {
-            width: var(--fill-width);
-        }
-
-        .impact-description {
-            color: #94a3b8;
-            line-height: 1.8;
-        }
-
-        /* Footer */
+        /* ============================================================
+           FOOTER
+           ============================================================ */
         footer {
-            background: #1a1a2e;
-            border-top: 1px solid #1e293b;
-            padding: 60px 0 40px;
-            margin-top: 80px;
+            background:#1a1a2e; border-top:1px solid #1e293b; padding:56px 0 36px; margin-top:0;
         }
+        .footer-inner { text-align:center; }
+        .footer-attr { font-size:1.15rem; font-weight:600; margin-bottom:18px; }
+        .footer-links { display:flex; gap:28px; justify-content:center; margin-bottom:24px; flex-wrap:wrap; }
+        .footer-links a { color:#94a3b8; font-weight:500; }
+        .footer-links a:hover { color:#3b82f6; }
+        .footer-note { color:#64748b; font-size:.88rem; }
 
-        .footer-content {
-            text-align: center;
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
+        @media(max-width:900px){
+            .comparison-grid { grid-template-columns:1fr; }
+            .heatmap-wrap { grid-template-columns:1fr; }
+            .dd-flow { flex-direction:column; }
+            .dd-arrow { width:4px; height:40px; }
+            .dd-arrow::after { width:100%; height:20px; left:0; animation:ddFlowV 1.5s linear infinite; }
+            @keyframes ddFlowV { 0%{top:-20px} 100%{top:100%} }
         }
-
-        .footer-attribution {
-            font-size: 1.2rem;
-            font-weight: 600;
-            margin-bottom: 20px;
-            color: #e2e8f0;
-        }
-
-        .footer-links {
-            display: flex;
-            gap: 30px;
-            justify-content: center;
-            margin-bottom: 30px;
-            flex-wrap: wrap;
-        }
-
-        .footer-links a {
-            color: #94a3b8;
-            text-decoration: none;
-            font-weight: 500;
-            transition: color 0.2s;
-        }
-
-        .footer-links a:hover {
-            color: #3b82f6;
-        }
-
-        .footer-info {
-            color: #94a3b8;
-            font-size: 0.95rem;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .hero h2 {
-                font-size: 2rem;
-            }
-
-            .hero-subtitle {
-                font-size: 1.1rem;
-            }
-
-            section h2 {
-                font-size: 2rem;
-            }
-
-            .phase-panels,
-            .architecture-comparison {
-                grid-template-columns: 1fr;
-            }
-
-            .disaggregated-section {
-                flex-direction: column;
-            }
-
-            .transfer-arrow {
-                transform: rotate(90deg);
-            }
-
-            .logo-title h1 {
-                font-size: 1.2rem;
-            }
+        @media(max-width:600px){
+            .hero-headline { font-size:1.8rem; }
+            .section-title { font-size:1.6rem; }
+            #cluster-canvas { height:360px; }
+            .hm-label { width:70px; font-size:.65rem; }
+            .hm-time-labels { margin-left:73px; }
         }
     </style>
 </head>
 <body>
-    <header>
-        <div class="container">
-            <div class="header-content">
-                <div class="logo-title">
-                    <img src="https://llm-d.ai/img/llm-d-icon.png" alt="llm-d">
-                    <h1>Deploying llm-d with Disaggregated Prefill &amp; Decode</h1>
+
+<!-- ====== HEADER ====== -->
+<header>
+    <div class="container">
+        <div class="header-inner">
+            <div class="logo-area">
+                <img src="https://llm-d.ai/img/llm-d-icon.png" alt="llm-d">
+                <h1>llm-d Disaggregated P/D</h1>
+            </div>
+            <nav class="nav-links">
+                <a href="https://markellr-redhat.github.io/llm-d-content-hub/">Content Hub</a>
+                <a href="blog/index.html">Blog Post</a>
+            </nav>
+        </div>
+    </div>
+</header>
+
+<!-- ====== 1. HERO ====== -->
+<section class="hero">
+    <div class="container">
+        <h2 class="hero-headline">Separate the Phases.<br>Unlock the Performance.</h2>
+        <p class="hero-sub">
+            Disaggregated prefill and decode splits LLM inference into dedicated GPU pods --
+            eliminating phase interference and unlocking dramatic gains in latency, throughput,
+            and hardware utilization on NVIDIA H200 GPUs with Llama 3.3 70B Instruct FP8.
+        </p>
+        <div class="hero-stats">
+            <div class="hero-stat">
+                <div class="hero-stat-val" style="color:#1a5fb4">19.8x</div>
+                <div class="hero-stat-label">TTFT Improvement</div>
+                <div class="hero-stat-desc">32K context with KV cache reuse</div>
+            </div>
+            <div class="hero-stat">
+                <div class="hero-stat-val" style="color:#2ec27e">1,483</div>
+                <div class="hero-stat-label">Tokens / sec</div>
+                <div class="hero-stat-desc">50 concurrent requests</div>
+            </div>
+            <div class="hero-stat">
+                <div class="hero-stat-val" style="color:#9b4d9b">30-60%</div>
+                <div class="hero-stat-label">Throughput Gain</div>
+                <div class="hero-stat-desc">Dedicated P/D pods vs unified</div>
+            </div>
+        </div>
+        <div class="hw-badge">
+            <strong>NVIDIA H200</strong> &middot; 141 GB HBM3e &middot; 4.8 TB/s &middot; Llama 3.3 70B FP8
+        </div>
+    </div>
+</section>
+
+<!-- ====== 2. CLUSTER VISUALIZATION ====== -->
+<section class="cluster-section">
+    <div class="container">
+        <h2 class="section-title">Live Cluster Visualization</h2>
+        <p class="section-subtitle">Prefill pods process prompts, transfer KV caches via RDMA, and decode pods generate tokens -- all running simultaneously.</p>
+        <canvas id="cluster-canvas"></canvas>
+    </div>
+</section>
+
+<!-- ====== 3. REQUEST LOAD SIMULATOR ====== -->
+<section class="simulator-section">
+    <div class="container">
+        <h2 class="section-title">Request Load Simulator</h2>
+        <p class="section-subtitle">Drag the slider to see how the cluster scales with increasing request load.</p>
+        <div class="sim-controls">
+            <div class="sim-slider-wrap">
+                <div class="sim-slider-label">
+                    <span>Request Load</span>
+                    <span id="sim-load-val">1</span>
                 </div>
-                <div class="header-links">
-                    <a href="https://markellr-redhat.github.io/llm-d-content-hub/">Content Hub</a>
-                    <a href="blog/index.html">Blog Post</a>
+                <input type="range" id="sim-slider" min="1" max="100" value="1">
+            </div>
+        </div>
+        <div class="sim-metrics">
+            <div class="sim-metric">
+                <div class="sim-metric-val" id="sim-ttft">0.65s</div>
+                <div class="sim-metric-label">Current TTFT</div>
+            </div>
+            <div class="sim-metric">
+                <div class="sim-metric-val" id="sim-throughput">45.5</div>
+                <div class="sim-metric-label">Tokens/sec</div>
+            </div>
+            <div class="sim-metric">
+                <div class="sim-metric-val" id="sim-pods">3</div>
+                <div class="sim-metric-label">Active Pods</div>
+            </div>
+            <div class="sim-metric">
+                <div class="sim-metric-val" id="sim-queue">0</div>
+                <div class="sim-metric-label">Queue Depth</div>
+            </div>
+            <div class="sim-metric">
+                <div class="sim-metric-val" id="sim-gpu">42%</div>
+                <div class="sim-metric-label">Avg GPU Util</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ====== 4. SPLIT-SCREEN COMPARISON ====== -->
+<section class="comparison-section">
+    <div class="container">
+        <h2 class="section-title">Unified vs. Disaggregated</h2>
+        <p class="section-subtitle">See the difference in real time. Unified pods switch between phases causing interference; disaggregated pods stay specialized.</p>
+        <div class="comparison-grid">
+            <div class="comp-panel unified">
+                <div class="comp-panel-title">
+                    Unified <span class="comp-badge bad">Baseline</span>
+                </div>
+                <p class="comp-panel-desc">Pods alternate between prefill and decode, causing resource contention and GPU under-utilization.</p>
+                <canvas class="comp-mini-canvas" id="comp-unified-canvas"></canvas>
+                <div class="comp-metrics">
+                    <div class="comp-met">
+                        <div class="comp-met-val" id="comp-u-ttft" style="color:#ef4444">--</div>
+                        <div class="comp-met-label">TTFT (s)</div>
+                    </div>
+                    <div class="comp-met">
+                        <div class="comp-met-val" id="comp-u-tput" style="color:#ef4444">--</div>
+                        <div class="comp-met-label">Tok/s</div>
+                    </div>
+                    <div class="comp-met">
+                        <div class="comp-met-val" id="comp-u-gpu" style="color:#ef4444">--</div>
+                        <div class="comp-met-label">GPU Util</div>
+                    </div>
+                </div>
+            </div>
+            <div class="comp-panel disagg">
+                <div class="comp-panel-title">
+                    Disaggregated <span class="comp-badge good">Optimized</span>
+                </div>
+                <p class="comp-panel-desc">Dedicated prefill and decode pods with stable, high utilization and fast KV cache transfer.</p>
+                <canvas class="comp-mini-canvas" id="comp-disagg-canvas"></canvas>
+                <div class="comp-metrics">
+                    <div class="comp-met">
+                        <div class="comp-met-val" id="comp-d-ttft" style="color:#2ec27e">--</div>
+                        <div class="comp-met-label">TTFT (s)</div>
+                    </div>
+                    <div class="comp-met">
+                        <div class="comp-met-val" id="comp-d-tput" style="color:#2ec27e">--</div>
+                        <div class="comp-met-label">Tok/s</div>
+                    </div>
+                    <div class="comp-met">
+                        <div class="comp-met-val" id="comp-d-gpu" style="color:#2ec27e">--</div>
+                        <div class="comp-met-label">GPU Util</div>
+                    </div>
                 </div>
             </div>
         </div>
-    </header>
+        <button class="comp-start-btn" id="comp-start-btn">Start 20-Second Simulation</button>
+        <div class="comp-timer" id="comp-timer"></div>
+    </div>
+</section>
 
-    <main>
-        <section class="hero">
-            <div class="container">
-                <h2>Separate the Phases, Double the Throughput</h2>
-                <p class="hero-subtitle">
-                    By splitting prefill and decode workloads across dedicated GPU pods, llm-d achieves dramatic improvements in latency, throughput, and resource utilization.
-                </p>
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-value" style="color:#1a5fb4">19.8x</div>
-                        <div class="stat-label">TTFT Improvement</div>
-                        <div class="stat-description">at 32K context with KV cache</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" style="color:#2ec27e">1,483</div>
-                        <div class="stat-label">Tokens/sec</div>
-                        <div class="stat-description">50 concurrent requests</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" style="color:#9b4d9b">30-60%</div>
-                        <div class="stat-label">Throughput Gain</div>
-                        <div class="stat-description">with dedicated P/D pods</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" style="color:#ef4444">~0%</div>
-                        <div class="stat-label">Cache Benefit</div>
-                        <div class="stat-description">without intelligent routing</div>
-                    </div>
+<!-- ====== 5. BENCHMARK CHARTS ====== -->
+<section class="bench-section">
+    <div class="container">
+        <h2 class="section-title">Benchmark Data</h2>
+        <p class="section-subtitle">Real performance data from Llama 3.3 70B Instruct FP8 on NVIDIA H200 GPUs.</p>
+        <div class="bench-tabs">
+            <button class="bench-tab active" data-tab="bench-ttft">TTFT by Context Length</button>
+            <button class="bench-tab" data-tab="bench-tput">Throughput Scaling</button>
+            <button class="bench-tab" data-tab="bench-cache">Cache Reuse Impact</button>
+        </div>
+
+        <div class="bench-panel active" id="bench-ttft">
+            <div class="bench-chart-wrap">
+                <canvas class="bench-canvas" id="chart-ttft"></canvas>
+                <div class="bench-tooltip" id="tt-ttft"></div>
+            </div>
+            <div class="bench-insight">
+                <h4>Key Insight</h4>
+                <p>At 32K tokens, cached TTFT is 19.8x faster than cold -- dropping from 4.74s to 0.24s. Prefix caching combined with intelligent routing delivers transformative latency improvements at scale.</p>
+            </div>
+        </div>
+
+        <div class="bench-panel" id="bench-tput">
+            <div class="bench-chart-wrap">
+                <canvas class="bench-canvas" id="chart-tput"></canvas>
+                <div class="bench-tooltip" id="tt-tput"></div>
+            </div>
+            <div class="bench-insight">
+                <h4>Key Insight</h4>
+                <p>Near-linear scaling: 50x concurrency yields a 32.6x throughput increase. Disaggregated architecture maintains efficiency under heavy load by preventing phase interference.</p>
+            </div>
+        </div>
+
+        <div class="bench-panel" id="bench-cache">
+            <div class="bench-chart-wrap">
+                <canvas class="bench-canvas" id="chart-cache"></canvas>
+                <div class="bench-tooltip" id="tt-cache"></div>
+            </div>
+            <div class="bench-insight">
+                <h4>Key Insight</h4>
+                <p>Without cache-aware routing, requests scatter across pods and cache hit rate drops to near zero. Intelligent routing is essential to realize the full benefit of prefix caching.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ====== 6. GPU UTILIZATION HEATMAP ====== -->
+<section class="heatmap-section">
+    <div class="container">
+        <h2 class="section-title">GPU Utilization Heatmap</h2>
+        <p class="section-subtitle">Compute and memory bandwidth utilization across prefill and decode pods over time.</p>
+        <div class="heatmap-wrap">
+            <div class="heatmap-block">
+                <h4>Compute Utilization</h4>
+                <div id="hm-compute"></div>
+            </div>
+            <div class="heatmap-block">
+                <h4>Memory Bandwidth Utilization</h4>
+                <div id="hm-memory"></div>
+            </div>
+        </div>
+        <div class="heatmap-legend">
+            <span class="hm-legend-label">Low</span>
+            <div class="hm-legend-bar"></div>
+            <span class="hm-legend-label">High</span>
+        </div>
+    </div>
+</section>
+
+<!-- ====== 7. SPARKLINE METRICS ====== -->
+<section class="sparkline-section">
+    <div class="container">
+        <div class="spark-grid">
+            <div class="spark-card">
+                <div class="spark-info">
+                    <div class="spark-label">TTFT (avg)</div>
+                    <div class="spark-val" id="spark-ttft-val" style="color:#3b82f6">0.24s</div>
+                </div>
+                <canvas class="spark-canvas" id="spark-ttft"></canvas>
+            </div>
+            <div class="spark-card">
+                <div class="spark-info">
+                    <div class="spark-label">Throughput</div>
+                    <div class="spark-val" id="spark-tput-val" style="color:#2ec27e">1,483</div>
+                </div>
+                <canvas class="spark-canvas" id="spark-tput"></canvas>
+            </div>
+            <div class="spark-card">
+                <div class="spark-info">
+                    <div class="spark-label">KV Transfer</div>
+                    <div class="spark-val" id="spark-kv-val" style="color:#9b4d9b">1.2ms</div>
+                </div>
+                <canvas class="spark-canvas" id="spark-kv"></canvas>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ====== 8. ARCHITECTURE DEEP DIVE ====== -->
+<section class="deepdive-section">
+    <div class="container">
+        <h2 class="section-title">Architecture Deep Dive</h2>
+        <button class="dd-toggle" id="dd-toggle">Show Architecture Deep Dive</button>
+        <div class="dd-content" id="dd-content">
+            <div class="dd-flow">
+                <div class="dd-node router">
+                    <h5>Router</h5>
+                    <p>Prefix-aware<br>load balancing</p>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center">
+                    <div class="dd-arrow"></div>
+                    <div class="dd-arrow-label">Request</div>
+                </div>
+                <div class="dd-node prefill-node">
+                    <h5>Prefill Pod</h5>
+                    <p>vLLM engine +<br>pd-sidecar</p>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center">
+                    <div class="dd-arrow"></div>
+                    <div class="dd-arrow-label">NIXL / RDMA</div>
+                </div>
+                <div class="dd-node transfer-node">
+                    <h5>KV Cache Transfer</h5>
+                    <p>High-speed GPU-to-GPU<br>memory transfer</p>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center">
+                    <div class="dd-arrow"></div>
+                    <div class="dd-arrow-label">KV Blocks</div>
+                </div>
+                <div class="dd-node decode-node">
+                    <h5>Decode Pod</h5>
+                    <p>vLLM engine +<br>pd-sidecar</p>
                 </div>
             </div>
-        </section>
 
-        <section id="why-separate">
-            <div class="container">
-                <h2>Why Separate Prefill and Decode?</h2>
-                <div class="phase-panels">
-                    <div class="phase-panel prefill">
-                        <div class="phase-title">
-                            <span class="phase-badge">Prefill</span>
-                        </div>
-                        <p class="phase-description">Processing 1,000 input tokens simultaneously</p>
-
-                        <div class="token-visualization">
-                            <div class="token-grid" id="prefill-tokens"></div>
-                        </div>
-
-                        <div class="utilization-bars">
-                            <div class="util-bar">
-                                <div class="util-label">
-                                    <span>GPU Compute</span>
-                                    <span>95%</span>
-                                </div>
-                                <div class="util-track">
-                                    <div class="util-fill compute-high"></div>
-                                </div>
-                            </div>
-                            <div class="util-bar">
-                                <div class="util-label">
-                                    <span>Memory Bandwidth</span>
-                                    <span>55%</span>
-                                </div>
-                                <div class="util-track">
-                                    <div class="util-fill memory-moderate"></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="phase-label">
-                            Compute-bound — GPU cores fully utilized
-                        </div>
-                    </div>
-
-                    <div class="phase-panel decode">
-                        <div class="phase-title">
-                            <span class="phase-badge">Decode</span>
-                        </div>
-                        <p class="phase-description">Generating tokens one at a time</p>
-
-                        <div class="token-visualization">
-                            <div class="token-sequence" id="decode-tokens"></div>
-                        </div>
-
-                        <div class="utilization-bars">
-                            <div class="util-bar">
-                                <div class="util-label">
-                                    <span>GPU Compute</span>
-                                    <span>15%</span>
-                                </div>
-                                <div class="util-track">
-                                    <div class="util-fill compute-low"></div>
-                                </div>
-                            </div>
-                            <div class="util-bar">
-                                <div class="util-label">
-                                    <span>Memory Bandwidth</span>
-                                    <span>90%</span>
-                                </div>
-                                <div class="util-track">
-                                    <div class="util-fill memory-high"></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="phase-label">
-                            Memory-bound — waiting on KV cache reads
-                        </div>
-                    </div>
+            <div class="dd-detail-grid">
+                <div class="dd-detail">
+                    <h4 style="color:#3b82f6">pd-sidecar</h4>
+                    <p>Runs alongside each vLLM engine pod. Coordinates KV cache metadata exchange, registers memory buffers for RDMA, and manages the lifecycle of cache transfers between prefill and decode pods.</p>
                 </div>
-
-                <div class="key-insight">
-                    <h3>Key Insight</h3>
-                    <p>
-                        Mixing both phases on the same GPU leads to interference — prefill starves decode of memory bandwidth, while decode leaves GPU compute underutilized during generation. By separating these workloads, each pod type can be optimized for its specific resource profile.
-                    </p>
+                <div class="dd-detail">
+                    <h4 style="color:#9b4d9b">NIXL (NVIDIA Inference Xfer Library)</h4>
+                    <p>A high-performance data transfer library that enables zero-copy GPU memory transfers between pods using RDMA. Provides the low-level transport layer for moving KV cache blocks at hardware bandwidth speeds.</p>
                 </div>
-            </div>
-        </section>
-
-        <section id="architecture">
-            <div class="container">
-                <h2>Standard vs. Disaggregated Architecture</h2>
-                <div class="architecture-comparison">
-                    <div class="architecture-panel">
-                        <h3 class="architecture-title">Standard (role=both)</h3>
-                        <p class="architecture-description">
-                            Each pod does both phases — GPU alternates between compute-bound and memory-bound work
-                        </p>
-                        <div class="architecture-viz">
-                            <div class="gpu-pods">
-                                <div class="gpu-pod standard-pod">GPU Pod 1</div>
-                                <div class="gpu-pod standard-pod">GPU Pod 2</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="architecture-panel">
-                        <h3 class="architecture-title">Disaggregated</h3>
-                        <p class="architecture-description">
-                            Prefill pods handle prompt processing, decode pods handle token generation
-                        </p>
-                        <div class="architecture-viz">
-                            <div class="disaggregated-section">
-                                <div class="pod-group">
-                                    <div class="prefill-pod">Prefill Pod</div>
-                                </div>
-                                <div class="kv-transfer">
-                                    <div class="transfer-arrow"></div>
-                                    <div class="transfer-label">KV Cache Transfer<br>via NixL/RDMA</div>
-                                </div>
-                                <div class="pod-group">
-                                    <div class="decode-pod">Decode Pod 1</div>
-                                    <div class="decode-pod">Decode Pod 2</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <div class="dd-detail">
+                    <h4 style="color:#2ec27e">RDMA Transport</h4>
+                    <p>Remote Direct Memory Access enables GPU-to-GPU transfers that bypass the CPU and OS kernel entirely. Combined with NIXL, this delivers sub-millisecond KV cache transfers even for large context windows.</p>
                 </div>
-            </div>
-        </section>
-
-        <section id="benchmarks">
-            <div class="container">
-                <h2>Real Benchmark Data</h2>
-                <div class="tabs">
-                    <button class="tab active" data-tab="ttft">TTFT by Context Length</button>
-                    <button class="tab" data-tab="throughput">Throughput Scaling</button>
-                    <button class="tab" data-tab="cache">Cache Reuse Impact</button>
-                </div>
-
-                <div class="tab-content active" id="ttft-content">
-                    <div class="chart-container">
-                        <div class="chart-wrapper">
-                            <canvas id="ttft-chart"></canvas>
-                        </div>
-                    </div>
-                    <div class="insight-callout">
-                        <h4>Key Insight</h4>
-                        <p>At 32K tokens, cached TTFT is 19.8x faster than cold — dropping from 4.74s to 0.24s. This dramatic improvement shows the power of prefix caching when combined with intelligent routing.</p>
-                    </div>
-                </div>
-
-                <div class="tab-content" id="throughput-content">
-                    <div class="chart-container">
-                        <div class="chart-wrapper">
-                            <canvas id="throughput-chart"></canvas>
-                        </div>
-                    </div>
-                    <div class="insight-callout">
-                        <h4>Key Insight</h4>
-                        <p>Near-linear scaling: 50x concurrency yields 32.6x throughput increase. Disaggregated architecture maintains efficiency even under heavy load by preventing phase interference.</p>
-                    </div>
-                </div>
-
-                <div class="tab-content" id="cache-content">
-                    <div class="chart-container">
-                        <div class="chart-wrapper">
-                            <canvas id="cache-chart"></canvas>
-                        </div>
-                    </div>
-                    <div class="insight-callout">
-                        <h4>Key Insight</h4>
-                        <p>Without intelligent routing, requests hit random pods — cache reuse drops to near zero (0.6-1.0x), eliminating the primary performance benefit. Cache-aware routing is essential for realizing the gains from prefix caching.</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section id="deployment">
-            <div class="container">
-                <h2>Deployment Guide</h2>
-                <div class="deployment-steps">
-                    <div class="deployment-step">
-                        <div class="step-header">
-                            <div class="step-number">1</div>
-                            <h3 class="step-title">Standard Deployment</h3>
-                        </div>
-                        <p class="step-description">
-                            Start with a basic llm-d deployment with prefix-aware routing. This baseline configuration uses pods that handle both prefill and decode.
-                        </p>
-                        <div class="code-block">
-                            <button class="copy-button" onclick="copyCode(this, 'code1')">Copy</button>
-                            <pre id="code1"><span class="yaml-key">apiVersion:</span> <span class="yaml-string">inference.llm-d.ai/v1alpha1</span>
-<span class="yaml-key">kind:</span> <span class="yaml-string">LLMInferenceService</span>
-<span class="yaml-key">metadata:</span>
-  <span class="yaml-key">name:</span> <span class="yaml-string">llama-3-3-70b-fp8</span>
-  <span class="yaml-key">namespace:</span> <span class="yaml-string">llm-d</span>
-<span class="yaml-key">spec:</span>
-  <span class="yaml-key">modelArtifact:</span>
-    <span class="yaml-key">uri:</span> <span class="yaml-string">"oci://quay.io/llm-d/models:llama-3.3-70b-instruct-fp8-kv-int8"</span>
-  <span class="yaml-key">inferenceConfig:</span>
-    <span class="yaml-key">replicas:</span> <span class="yaml-number">2</span>
-    <span class="yaml-key">accelerator:</span>
-      <span class="yaml-key">type:</span> <span class="yaml-string">nvidia.com/gpu</span>
-      <span class="yaml-key">count:</span> <span class="yaml-number">4</span>
-      <span class="yaml-key">product:</span> <span class="yaml-string">H200</span>
-  <span class="yaml-key">routing:</span>
-    <span class="yaml-key">strategy:</span> <span class="yaml-string">prefix-aware</span></pre>
-                        </div>
-                    </div>
-
-                    <div class="deployment-step">
-                        <div class="step-header">
-                            <div class="step-number">2</div>
-                            <h3 class="step-title">Add Prefill Workers</h3>
-                        </div>
-                        <p class="step-description">
-                            Add dedicated prefill workers to handle prompt processing. These pods will focus exclusively on the compute-intensive prefill phase.
-                        </p>
-                        <div class="code-block highlight">
-                            <button class="copy-button" onclick="copyCode(this, 'code2')">Copy</button>
-                            <pre id="code2"><span class="yaml-key">apiVersion:</span> <span class="yaml-string">inference.llm-d.ai/v1alpha1</span>
-<span class="yaml-key">kind:</span> <span class="yaml-string">LLMInferenceService</span>
-<span class="yaml-key">metadata:</span>
-  <span class="yaml-key">name:</span> <span class="yaml-string">llama-3-3-70b-fp8</span>
-  <span class="yaml-key">namespace:</span> <span class="yaml-string">llm-d</span>
-<span class="yaml-key">spec:</span>
-  <span class="yaml-key">modelArtifact:</span>
-    <span class="yaml-key">uri:</span> <span class="yaml-string">"oci://quay.io/llm-d/models:llama-3.3-70b-instruct-fp8-kv-int8"</span>
-  <span class="yaml-key">inferenceConfig:</span>
-    <span class="yaml-key">replicas:</span> <span class="yaml-number">2</span>
-    <span class="yaml-key">accelerator:</span>
-      <span class="yaml-key">type:</span> <span class="yaml-string">nvidia.com/gpu</span>
-      <span class="yaml-key">count:</span> <span class="yaml-number">4</span>
-      <span class="yaml-key">product:</span> <span class="yaml-string">H200</span>
-  <span class="yaml-key">prefill:</span>
-    <span class="yaml-key">replicas:</span> <span class="yaml-number">1</span>
-    <span class="yaml-key">accelerator:</span>
-      <span class="yaml-key">type:</span> <span class="yaml-string">nvidia.com/gpu</span>
-      <span class="yaml-key">count:</span> <span class="yaml-number">4</span>
-      <span class="yaml-key">product:</span> <span class="yaml-string">H200</span>
-  <span class="yaml-key">routing:</span>
-    <span class="yaml-key">strategy:</span> <span class="yaml-string">prefix-aware</span></pre>
-                        </div>
-                    </div>
-
-                    <div class="deployment-step">
-                        <div class="step-header">
-                            <div class="step-number">3</div>
-                            <h3 class="step-title">Enable KV Cache Transfer</h3>
-                        </div>
-                        <p class="step-description">
-                            Configure high-speed KV cache transfer between prefill and decode pods using NixL with RDMA transport for minimal latency.
-                        </p>
-                        <div class="code-block highlight">
-                            <button class="copy-button" onclick="copyCode(this, 'code3')">Copy</button>
-                            <pre id="code3"><span class="yaml-key">apiVersion:</span> <span class="yaml-string">inference.llm-d.ai/v1alpha1</span>
-<span class="yaml-key">kind:</span> <span class="yaml-string">LLMInferenceService</span>
-<span class="yaml-key">metadata:</span>
-  <span class="yaml-key">name:</span> <span class="yaml-string">llama-3-3-70b-fp8</span>
-  <span class="yaml-key">namespace:</span> <span class="yaml-string">llm-d</span>
-<span class="yaml-key">spec:</span>
-  <span class="yaml-key">modelArtifact:</span>
-    <span class="yaml-key">uri:</span> <span class="yaml-string">"oci://quay.io/llm-d/models:llama-3.3-70b-instruct-fp8-kv-int8"</span>
-  <span class="yaml-key">inferenceConfig:</span>
-    <span class="yaml-key">replicas:</span> <span class="yaml-number">2</span>
-    <span class="yaml-key">accelerator:</span>
-      <span class="yaml-key">type:</span> <span class="yaml-string">nvidia.com/gpu</span>
-      <span class="yaml-key">count:</span> <span class="yaml-number">4</span>
-      <span class="yaml-key">product:</span> <span class="yaml-string">H200</span>
-  <span class="yaml-key">prefill:</span>
-    <span class="yaml-key">replicas:</span> <span class="yaml-number">1</span>
-    <span class="yaml-key">accelerator:</span>
-      <span class="yaml-key">type:</span> <span class="yaml-string">nvidia.com/gpu</span>
-      <span class="yaml-key">count:</span> <span class="yaml-number">4</span>
-      <span class="yaml-key">product:</span> <span class="yaml-string">H200</span>
-  <span class="yaml-key">kvCacheTransfer:</span>
-    <span class="yaml-key">connector:</span> <span class="yaml-string">nixl</span>
-    <span class="yaml-key">transport:</span> <span class="yaml-string">rdma</span>
-  <span class="yaml-key">routing:</span>
-    <span class="yaml-key">strategy:</span> <span class="yaml-string">prefix-aware</span></pre>
-                        </div>
-                    </div>
-
-                    <div class="deployment-step">
-                        <div class="step-header">
-                            <div class="step-number">4</div>
-                            <h3 class="step-title">Configure Routing</h3>
-                        </div>
-                        <p class="step-description">
-                            Switch to disaggregated-prefill-decode routing strategy with KV-affinity for decode pods to maximize cache reuse.
-                        </p>
-                        <div class="code-block highlight">
-                            <button class="copy-button" onclick="copyCode(this, 'code4')">Copy</button>
-                            <pre id="code4"><span class="yaml-key">apiVersion:</span> <span class="yaml-string">inference.llm-d.ai/v1alpha1</span>
-<span class="yaml-key">kind:</span> <span class="yaml-string">LLMInferenceService</span>
-<span class="yaml-key">metadata:</span>
-  <span class="yaml-key">name:</span> <span class="yaml-string">llama-3-3-70b-fp8</span>
-  <span class="yaml-key">namespace:</span> <span class="yaml-string">llm-d</span>
-<span class="yaml-key">spec:</span>
-  <span class="yaml-key">modelArtifact:</span>
-    <span class="yaml-key">uri:</span> <span class="yaml-string">"oci://quay.io/llm-d/models:llama-3.3-70b-instruct-fp8-kv-int8"</span>
-  <span class="yaml-key">inferenceConfig:</span>
-    <span class="yaml-key">replicas:</span> <span class="yaml-number">2</span>
-    <span class="yaml-key">accelerator:</span>
-      <span class="yaml-key">type:</span> <span class="yaml-string">nvidia.com/gpu</span>
-      <span class="yaml-key">count:</span> <span class="yaml-number">4</span>
-      <span class="yaml-key">product:</span> <span class="yaml-string">H200</span>
-  <span class="yaml-key">prefill:</span>
-    <span class="yaml-key">replicas:</span> <span class="yaml-number">1</span>
-    <span class="yaml-key">accelerator:</span>
-      <span class="yaml-key">type:</span> <span class="yaml-string">nvidia.com/gpu</span>
-      <span class="yaml-key">count:</span> <span class="yaml-number">4</span>
-      <span class="yaml-key">product:</span> <span class="yaml-string">H200</span>
-  <span class="yaml-key">kvCacheTransfer:</span>
-    <span class="yaml-key">connector:</span> <span class="yaml-string">nixl</span>
-    <span class="yaml-key">transport:</span> <span class="yaml-string">rdma</span>
-  <span class="yaml-key">routing:</span>
-    <span class="yaml-key">strategy:</span> <span class="yaml-string">disaggregated-prefill-decode</span>
-    <span class="yaml-key">prefillRouting:</span>
-      <span class="yaml-key">loadBalancing:</span> <span class="yaml-string">least-load</span>
-    <span class="yaml-key">decodeRouting:</span>
-      <span class="yaml-key">loadBalancing:</span> <span class="yaml-string">kv-affinity</span></pre>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section id="performance">
-            <div class="container">
-                <h2>Performance Impact</h2>
-                <div class="impact-cards">
-                    <div class="impact-card" data-fill="75">
-                        <h3 class="impact-title">Throughput</h3>
-                        <div class="impact-value">30-60%</div>
-                        <div class="impact-bar">
-                            <div class="impact-bar-fill" style="--fill-width: 75%;">
-                                Higher
-                            </div>
-                        </div>
-                        <p class="impact-description">
-                            Sustained throughput improves by 30-60% as dedicated pods eliminate phase interference and maximize hardware utilization.
-                        </p>
-                    </div>
-
-                    <div class="impact-card" data-fill="85">
-                        <h3 class="impact-title">TTFT Under Load</h3>
-                        <div class="impact-value">Consistent</div>
-                        <div class="impact-bar">
-                            <div class="impact-bar-fill" style="--fill-width: 85%;">
-                                Stable
-                            </div>
-                        </div>
-                        <p class="impact-description">
-                            Dedicated prefill pods maintain low TTFT even at high concurrency, preventing decode workloads from delaying prompt processing.
-                        </p>
-                    </div>
-
-                    <div class="impact-card" data-fill="90">
-                        <h3 class="impact-title">GPU Utilization</h3>
-                        <div class="impact-value">60% → 90%</div>
-                        <div class="impact-bar">
-                            <div class="impact-bar-fill" style="--fill-width: 90%;">
-                                Optimized
-                            </div>
-                        </div>
-                        <p class="impact-description">
-                            Higher efficiency on both pod types as each can be tuned for its specific workload characteristics — compute vs. memory bound.
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <footer>
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-attribution">
-                    Markell Rawls · Developer Advocate · Red Hat
-                </div>
-                <div class="footer-links">
-                    <a href="https://markellr-redhat.github.io/llm-d-content-hub/">Content Hub</a>
-                    <a href="https://github.com/llm-d">GitHub</a>
-                    <a href="blog/index.html">Blog Post</a>
-                </div>
-                <div class="footer-info">
-                    llm-d is a CNCF Sandbox project for distributed LLM inference routing
+                <div class="dd-detail">
+                    <h4 style="color:#e2e8f0">Request Flow</h4>
+                    <p>1. Router receives request, selects prefill pod via least-load balancing. 2. Prefill pod processes prompt, generates KV cache. 3. KV cache transfers to decode pod via NIXL/RDMA. 4. Decode pod generates tokens using cached attention states.</p>
                 </div>
             </div>
         </div>
-    </footer>
+    </div>
+</section>
 
-    <script>
-        // Initialize prefill tokens
-        const prefillTokensContainer = document.getElementById('prefill-tokens');
-        for (let i = 0; i < 50; i++) {
-            const token = document.createElement('div');
-            token.className = 'token';
-            token.style.setProperty('--i', i);
-            prefillTokensContainer.appendChild(token);
+<!-- ====== 9. DEPLOYMENT GUIDE ====== -->
+<section class="deploy-section">
+    <div class="container">
+        <h2 class="section-title">Deployment Guide</h2>
+        <p class="section-subtitle">Progressive configuration from standard to fully disaggregated, using the LLMInferenceService CRD.</p>
+        <div class="deploy-steps">
+
+            <!-- Step 1 -->
+            <div class="deploy-step">
+                <div class="step-head">
+                    <div class="step-num">1</div>
+                    <h3 class="step-title">Standard Deployment</h3>
+                </div>
+                <p class="step-desc">Start with a baseline llm-d deployment with prefix-aware routing. Pods handle both prefill and decode.</p>
+                <div class="code-block">
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<pre><span class="yk">apiVersion:</span> <span class="ys">inference.llm-d.ai/v1alpha1</span>
+<span class="yk">kind:</span> <span class="ys">LLMInferenceService</span>
+<span class="yk">metadata:</span>
+  <span class="yk">name:</span> <span class="ys">llama-3-3-70b-fp8</span>
+  <span class="yk">namespace:</span> <span class="ys">llm-d</span>
+<span class="yk">spec:</span>
+  <span class="yk">modelArtifact:</span>
+    <span class="yk">uri:</span> <span class="ys">"oci://quay.io/llm-d/models:llama-3.3-70b-instruct-fp8-kv-int8"</span>
+  <span class="yk">inferenceConfig:</span>
+    <span class="yk">replicas:</span> <span class="yn">2</span>
+    <span class="yk">accelerator:</span>
+      <span class="yk">type:</span> <span class="ys">nvidia.com/gpu</span>
+      <span class="yk">count:</span> <span class="yn">4</span>
+      <span class="yk">product:</span> <span class="ys">H200</span>
+  <span class="yk">routing:</span>
+    <span class="yk">strategy:</span> <span class="ys">prefix-aware</span></pre>
+                </div>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="deploy-step">
+                <div class="step-head">
+                    <div class="step-num">2</div>
+                    <h3 class="step-title">Add Prefill Workers</h3>
+                </div>
+                <p class="step-desc">Add dedicated prefill workers for the compute-intensive prompt processing phase.</p>
+                <div class="code-block hl">
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<pre><span class="yk">apiVersion:</span> <span class="ys">inference.llm-d.ai/v1alpha1</span>
+<span class="yk">kind:</span> <span class="ys">LLMInferenceService</span>
+<span class="yk">metadata:</span>
+  <span class="yk">name:</span> <span class="ys">llama-3-3-70b-fp8</span>
+  <span class="yk">namespace:</span> <span class="ys">llm-d</span>
+<span class="yk">spec:</span>
+  <span class="yk">modelArtifact:</span>
+    <span class="yk">uri:</span> <span class="ys">"oci://quay.io/llm-d/models:llama-3.3-70b-instruct-fp8-kv-int8"</span>
+  <span class="yk">inferenceConfig:</span>
+    <span class="yk">replicas:</span> <span class="yn">2</span>
+    <span class="yk">accelerator:</span>
+      <span class="yk">type:</span> <span class="ys">nvidia.com/gpu</span>
+      <span class="yk">count:</span> <span class="yn">4</span>
+      <span class="yk">product:</span> <span class="ys">H200</span>
+  <span class="yk">prefill:</span>
+    <span class="yk">replicas:</span> <span class="yn">1</span>
+    <span class="yk">accelerator:</span>
+      <span class="yk">type:</span> <span class="ys">nvidia.com/gpu</span>
+      <span class="yk">count:</span> <span class="yn">4</span>
+      <span class="yk">product:</span> <span class="ys">H200</span>
+  <span class="yk">routing:</span>
+    <span class="yk">strategy:</span> <span class="ys">prefix-aware</span></pre>
+                </div>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="deploy-step">
+                <div class="step-head">
+                    <div class="step-num">3</div>
+                    <h3 class="step-title">Enable KV Cache Transfer</h3>
+                </div>
+                <p class="step-desc">Configure high-speed KV cache transfer using NIXL with RDMA transport for minimal latency between pods.</p>
+                <div class="code-block hl">
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<pre><span class="yk">apiVersion:</span> <span class="ys">inference.llm-d.ai/v1alpha1</span>
+<span class="yk">kind:</span> <span class="ys">LLMInferenceService</span>
+<span class="yk">metadata:</span>
+  <span class="yk">name:</span> <span class="ys">llama-3-3-70b-fp8</span>
+  <span class="yk">namespace:</span> <span class="ys">llm-d</span>
+<span class="yk">spec:</span>
+  <span class="yk">modelArtifact:</span>
+    <span class="yk">uri:</span> <span class="ys">"oci://quay.io/llm-d/models:llama-3.3-70b-instruct-fp8-kv-int8"</span>
+  <span class="yk">inferenceConfig:</span>
+    <span class="yk">replicas:</span> <span class="yn">2</span>
+    <span class="yk">accelerator:</span>
+      <span class="yk">type:</span> <span class="ys">nvidia.com/gpu</span>
+      <span class="yk">count:</span> <span class="yn">4</span>
+      <span class="yk">product:</span> <span class="ys">H200</span>
+  <span class="yk">prefill:</span>
+    <span class="yk">replicas:</span> <span class="yn">1</span>
+    <span class="yk">accelerator:</span>
+      <span class="yk">type:</span> <span class="ys">nvidia.com/gpu</span>
+      <span class="yk">count:</span> <span class="yn">4</span>
+      <span class="yk">product:</span> <span class="ys">H200</span>
+  <span class="yk">kvCacheTransfer:</span>
+    <span class="yk">connector:</span> <span class="ys">nixl</span>
+    <span class="yk">transport:</span> <span class="ys">rdma</span>
+  <span class="yk">routing:</span>
+    <span class="yk">strategy:</span> <span class="ys">prefix-aware</span></pre>
+                </div>
+            </div>
+
+            <!-- Step 4 -->
+            <div class="deploy-step">
+                <div class="step-head">
+                    <div class="step-num">4</div>
+                    <h3 class="step-title">Configure Disaggregated Routing</h3>
+                </div>
+                <p class="step-desc">Switch to disaggregated-prefill-decode routing with KV-affinity for decode pods to maximize cache reuse.</p>
+                <div class="code-block hl">
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<pre><span class="yk">apiVersion:</span> <span class="ys">inference.llm-d.ai/v1alpha1</span>
+<span class="yk">kind:</span> <span class="ys">LLMInferenceService</span>
+<span class="yk">metadata:</span>
+  <span class="yk">name:</span> <span class="ys">llama-3-3-70b-fp8</span>
+  <span class="yk">namespace:</span> <span class="ys">llm-d</span>
+<span class="yk">spec:</span>
+  <span class="yk">modelArtifact:</span>
+    <span class="yk">uri:</span> <span class="ys">"oci://quay.io/llm-d/models:llama-3.3-70b-instruct-fp8-kv-int8"</span>
+  <span class="yk">inferenceConfig:</span>
+    <span class="yk">replicas:</span> <span class="yn">2</span>
+    <span class="yk">accelerator:</span>
+      <span class="yk">type:</span> <span class="ys">nvidia.com/gpu</span>
+      <span class="yk">count:</span> <span class="yn">4</span>
+      <span class="yk">product:</span> <span class="ys">H200</span>
+  <span class="yk">prefill:</span>
+    <span class="yk">replicas:</span> <span class="yn">1</span>
+    <span class="yk">accelerator:</span>
+      <span class="yk">type:</span> <span class="ys">nvidia.com/gpu</span>
+      <span class="yk">count:</span> <span class="yn">4</span>
+      <span class="yk">product:</span> <span class="ys">H200</span>
+  <span class="yk">kvCacheTransfer:</span>
+    <span class="yk">connector:</span> <span class="ys">nixl</span>
+    <span class="yk">transport:</span> <span class="ys">rdma</span>
+  <span class="yk">routing:</span>
+    <span class="yk">strategy:</span> <span class="ys">disaggregated-prefill-decode</span>
+    <span class="yk">prefillRouting:</span>
+      <span class="yk">loadBalancing:</span> <span class="ys">least-load</span>
+    <span class="yk">decodeRouting:</span>
+      <span class="yk">loadBalancing:</span> <span class="ys">kv-affinity</span></pre>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+<!-- ====== 10. PERFORMANCE IMPACT CARDS ====== -->
+<section class="impact-section">
+    <div class="container">
+        <h2 class="section-title">Performance Impact</h2>
+        <p class="section-subtitle">Measured improvements when moving from unified to disaggregated inference.</p>
+        <div class="impact-grid">
+            <div class="impact-card" style="--fw:75%">
+                <h3 class="impact-card-title">Throughput</h3>
+                <div class="impact-card-val">30-60%</div>
+                <div class="impact-bar-track">
+                    <div class="impact-bar-fill">Higher</div>
+                </div>
+                <p class="impact-desc">Sustained throughput improves by 30-60% as dedicated pods eliminate phase interference and maximize hardware utilization.</p>
+            </div>
+            <div class="impact-card" style="--fw:85%">
+                <h3 class="impact-card-title">TTFT Stability</h3>
+                <div class="impact-card-val">Consistent</div>
+                <div class="impact-bar-track">
+                    <div class="impact-bar-fill">Stable</div>
+                </div>
+                <p class="impact-desc">Dedicated prefill pods maintain low TTFT even at high concurrency, preventing decode workloads from delaying prompt processing.</p>
+            </div>
+            <div class="impact-card" style="--fw:90%">
+                <h3 class="impact-card-title">GPU Utilization</h3>
+                <div class="impact-card-val">60% &rarr; 90%</div>
+                <div class="impact-bar-track">
+                    <div class="impact-bar-fill">Optimized</div>
+                </div>
+                <p class="impact-desc">Higher efficiency on both pod types as each is tuned for its workload -- compute-bound prefill and memory-bound decode.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ====== FOOTER ====== -->
+<footer>
+    <div class="container">
+        <div class="footer-inner">
+            <div class="footer-attr">Markell Rawls &middot; Developer Advocate &middot; Red Hat</div>
+            <div class="footer-links">
+                <a href="https://markellr-redhat.github.io/llm-d-content-hub/">Content Hub</a>
+                <a href="https://github.com/llm-d">GitHub</a>
+                <a href="blog/index.html">Blog Post</a>
+            </div>
+            <div class="footer-note">llm-d is a CNCF Sandbox project for distributed LLM inference routing.</div>
+        </div>
+    </div>
+</footer>
+
+<!-- ====================================================================
+     ALL JAVASCRIPT -- ZERO EXTERNAL DEPENDENCIES
+     ==================================================================== -->
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   UTILITY
+   ============================================================ */
+const dpr = window.devicePixelRatio || 1;
+function sizeCanvas(canvas, w, h) {
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    return ctx;
+}
+function lerp(a,b,t){ return a + (b-a)*t; }
+function clamp(v,lo,hi){ return Math.max(lo,Math.min(hi,v)); }
+
+/* ============================================================
+   2. CLUSTER VISUALIZATION (canvas)
+   ============================================================ */
+(function clusterViz(){
+    const canvas = document.getElementById('cluster-canvas');
+    if(!canvas) return;
+    let W, H, ctx;
+    function resize(){
+        const rect = canvas.parentElement.getBoundingClientRect();
+        W = rect.width;
+        H = parseInt(canvas.style.height) || 520;
+        ctx = sizeCanvas(canvas, W, H);
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    // Layout config - will be recalculated in draw
+    const prefillColor = '#1a5fb4';
+    const decodeColor  = '#2ec27e';
+    const kvColor      = '#9b4d9b';
+    const routerColor  = '#3b82f6';
+
+    // Particles for KV transfer
+    let particles = [];
+    const MAX_PARTICLES = 60;
+
+    // Current state driven by slider
+    let loadLevel = 1;
+    let prefillPods = 1;
+    let decodePods = 2;
+
+    function getPodCounts(load){
+        let pp = 1, dp = 2;
+        if(load > 60) pp = 2;
+        if(load > 30) dp = 3;
+        return {pp, dp};
+    }
+
+    // Particle class
+    function Particle(sx,sy,ex,ey){
+        this.sx=sx; this.sy=sy; this.ex=ex; this.ey=ey;
+        this.t = Math.random();
+        this.speed = 0.003 + Math.random()*0.004;
+        this.size = 2 + Math.random()*2;
+    }
+
+    function spawnParticles(count, connections){
+        while(particles.length < count && connections.length > 0){
+            const c = connections[Math.floor(Math.random()*connections.length)];
+            particles.push(new Particle(c.sx,c.sy,c.ex,c.ey));
+        }
+    }
+
+    let time = 0;
+    function draw(){
+        time += 0.016;
+        ctx.clearRect(0,0,W,H);
+
+        const counts = getPodCounts(loadLevel);
+        prefillPods = counts.pp;
+        decodePods = counts.dp;
+
+        // Layout
+        const podW = 160, podH = 80, podR = 12;
+        const routerW = 120, routerH = 50;
+        const routerX = 60, routerY = H/2 - routerH/2;
+        const prefillStartX = routerX + routerW + 80;
+        const decodeStartX = prefillStartX + podW + 120;
+
+        // GPU utilization based on load
+        const gpuUtil = clamp(0.3 + loadLevel*0.007, 0.3, 0.95);
+        const queueFill = clamp((loadLevel - 20)/80, 0, 1);
+
+        // Draw Router
+        ctx.save();
+        ctx.shadowColor = routerColor;
+        ctx.shadowBlur = 12 + 4*Math.sin(time*2);
+        drawRoundRect(ctx, routerX, routerY, routerW, routerH, 10, routerColor);
+        ctx.shadowBlur = 0;
+        ctx.restore();
+        ctx.fillStyle = '#fff';
+        ctx.font = '600 13px Red Hat Text, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Router', routerX + routerW/2, routerY + routerH/2 + 5);
+
+        // Draw request arrows to router
+        const reqCount = Math.min(Math.ceil(loadLevel / 15), 7);
+        for(let i=0; i<reqCount; i++){
+            const yOff = (i - (reqCount-1)/2) * 18;
+            const arrX = routerX - 30;
+            const arrY = routerY + routerH/2 + yOff;
+            ctx.strokeStyle = 'rgba(59,130,246,0.4)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(arrX - 20, arrY);
+            ctx.lineTo(arrX + 25, arrY);
+            ctx.stroke();
+            // Animated dot
+            const dotT = ((time * 0.8 + i * 0.15) % 1);
+            ctx.fillStyle = routerColor;
+            ctx.beginPath();
+            ctx.arc(arrX - 20 + dotT * 45, arrY, 3, 0, Math.PI*2);
+            ctx.fill();
         }
 
-        // Initialize decode tokens
-        const decodeTokensContainer = document.getElementById('decode-tokens');
-        for (let i = 0; i < 8; i++) {
-            const token = document.createElement('div');
-            token.className = 'token-sequential';
-            token.style.animationDelay = `${i * 0.5}s`;
-            decodeTokensContainer.appendChild(token);
+        // Prefill pods
+        const prefillPodPositions = [];
+        for(let i=0; i<prefillPods; i++){
+            const py = H/2 - ((prefillPods-1)*((podH+20))/2) + i*(podH+20) - podH/2;
+            prefillPodPositions.push({x:prefillStartX, y:py});
+            drawPod(ctx, prefillStartX, py, podW, podH, podR, prefillColor, 'Prefill Pod '+(i+1), gpuUtil, queueFill, time);
         }
 
-        // Tab switching
-        const tabs = document.querySelectorAll('.tab');
-        const tabContents = document.querySelectorAll('.tab-content');
+        // Decode pods
+        const decodePodPositions = [];
+        for(let i=0; i<decodePods; i++){
+            const py = H/2 - ((decodePods-1)*((podH+20))/2) + i*(podH+20) - podH/2;
+            decodePodPositions.push({x:decodeStartX, y:py});
+            drawPod(ctx, decodeStartX, py, podW, podH, podR, decodeColor, 'Decode Pod '+(i+1), gpuUtil * 0.85, 0, time);
+        }
 
-        tabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                const tabName = tab.dataset.tab;
+        // Connection lines from router to prefill
+        prefillPodPositions.forEach(p => {
+            drawConnectionLine(ctx, routerX+routerW, routerY+routerH/2, p.x, p.y+podH/2, routerColor, time);
+        });
 
-                tabs.forEach(t => t.classList.remove('active'));
-                tabContents.forEach(tc => tc.classList.remove('active'));
-
-                tab.classList.add('active');
-                document.getElementById(`${tabName}-content`).classList.add('active');
+        // Connection lines from prefill to decode (KV transfer)
+        const connections = [];
+        prefillPodPositions.forEach(pp => {
+            decodePodPositions.forEach(dp => {
+                connections.push({
+                    sx: pp.x + podW, sy: pp.y + podH/2,
+                    ex: dp.x, ey: dp.y + podH/2
+                });
+                drawConnectionLine(ctx, pp.x+podW, pp.y+podH/2, dp.x, dp.y+podH/2, kvColor, time);
             });
         });
 
-        // Copy code functionality
-        function copyCode(button, codeId) {
-            const code = document.getElementById(codeId).textContent;
-            navigator.clipboard.writeText(code).then(() => {
-                button.textContent = 'Copied!';
-                button.classList.add('copied');
-                setTimeout(() => {
-                    button.textContent = 'Copy';
-                    button.classList.remove('copied');
-                }, 2000);
-            });
+        // KV label
+        if(connections.length > 0){
+            const midConn = connections[Math.floor(connections.length/2)];
+            const mx = (midConn.sx + midConn.ex)/2;
+            const my = (midConn.sy + midConn.ey)/2 - 18;
+            ctx.fillStyle = '#9b4d9b';
+            ctx.font = '600 11px Red Hat Text, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('KV Cache Transfer (NIXL/RDMA)', mx, my);
         }
 
-        // Chart.js configurations
-        Chart.defaults.color = '#94a3b8';
-        Chart.defaults.borderColor = '#1e293b';
-        Chart.defaults.font.family = "'Red Hat Text', sans-serif";
+        // Particles
+        const targetParticles = Math.floor(5 + loadLevel * 0.5);
+        spawnParticles(targetParticles, connections);
 
-        // TTFT Chart
-        const ttftCtx = document.getElementById('ttft-chart').getContext('2d');
-        new Chart(ttftCtx, {
-            type: 'line',
-            data: {
-                labels: ['500', '1K', '4K', '8K', '16K', '32K'],
-                datasets: [{
-                    label: 'Cold/Uncached',
-                    data: [0.65, 0.24, 0.45, 0.93, 1.90, 4.74],
-                    borderColor: '#ef4444',
-                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                    borderWidth: 3,
-                    tension: 0.3,
-                    fill: true
-                }, {
-                    label: 'Cached',
-                    data: [0.16, 0.16, 0.16, 0.25, 0.19, 0.24],
-                    borderColor: '#2ec27e',
-                    backgroundColor: 'rgba(46, 194, 126, 0.1)',
-                    borderWidth: 3,
-                    tension: 0.3,
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'top',
-                        labels: {
-                            color: '#e2e8f0',
-                            font: {
-                                size: 14,
-                                weight: 600
-                            }
-                        }
-                    },
-                    tooltip: {
-                        backgroundColor: '#1a1a2e',
-                        borderColor: '#3b82f6',
-                        borderWidth: 1,
-                        titleColor: '#e2e8f0',
-                        bodyColor: '#94a3b8',
-                        padding: 12
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'TTFT (seconds)',
-                            color: '#e2e8f0',
-                            font: {
-                                size: 14,
-                                weight: 600
-                            }
-                        },
-                        grid: {
-                            color: '#1e293b'
-                        }
-                    },
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'Context Length (tokens)',
-                            color: '#e2e8f0',
-                            font: {
-                                size: 14,
-                                weight: 600
-                            }
-                        },
-                        grid: {
-                            color: '#1e293b'
-                        }
-                    }
-                }
-            }
+        particles.forEach(p => {
+            p.t += p.speed;
+            if(p.t > 1) p.t = 0;
+            const cx1 = p.sx + (p.ex-p.sx)*0.3;
+            const cy1 = p.sy - 30;
+            const cx2 = p.sx + (p.ex-p.sx)*0.7;
+            const cy2 = p.ey + 30;
+            const t = p.t;
+            const mt = 1-t;
+            const px = mt*mt*mt*p.sx + 3*mt*mt*t*cx1 + 3*mt*t*t*cx2 + t*t*t*p.ex;
+            const py = mt*mt*mt*p.sy + 3*mt*mt*t*cy1 + 3*mt*t*t*cy2 + t*t*t*p.ey;
+
+            const alpha = Math.sin(t * Math.PI);
+            ctx.beginPath();
+            ctx.arc(px, py, p.size, 0, Math.PI*2);
+            ctx.fillStyle = `rgba(155,77,155,${alpha * 0.9})`;
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(px, py, p.size * 1.8, 0, Math.PI*2);
+            ctx.fillStyle = `rgba(155,77,155,${alpha * 0.2})`;
+            ctx.fill();
         });
 
-        // Throughput Chart
-        const throughputCtx = document.getElementById('throughput-chart').getContext('2d');
-        new Chart(throughputCtx, {
-            type: 'bar',
-            data: {
-                labels: ['1', '5', '10', '50'],
-                datasets: [{
-                    label: 'Tokens/second',
-                    data: [45.5, 175.3, 359.8, 1483.4],
-                    backgroundColor: 'rgba(59, 130, 246, 0.8)',
-                    borderColor: '#3b82f6',
-                    borderWidth: 2
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'top',
-                        labels: {
-                            color: '#e2e8f0',
-                            font: {
-                                size: 14,
-                                weight: 600
-                            }
-                        }
-                    },
-                    tooltip: {
-                        backgroundColor: '#1a1a2e',
-                        borderColor: '#3b82f6',
-                        borderWidth: 1,
-                        titleColor: '#e2e8f0',
-                        bodyColor: '#94a3b8',
-                        padding: 12
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'Tokens/second',
-                            color: '#e2e8f0',
-                            font: {
-                                size: 14,
-                                weight: 600
-                            }
-                        },
-                        grid: {
-                            color: '#1e293b'
-                        }
-                    },
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'Concurrent Requests',
-                            color: '#e2e8f0',
-                            font: {
-                                size: 14,
-                                weight: 600
-                            }
-                        },
-                        grid: {
-                            color: '#1e293b'
-                        }
-                    }
-                }
+        // Trim excess particles
+        while(particles.length > targetParticles + 10){
+            particles.shift();
+        }
+
+        requestAnimationFrame(draw);
+    }
+
+    function drawRoundRect(ctx, x, y, w, h, r, color){
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(x+r, y);
+        ctx.lineTo(x+w-r, y);
+        ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+        ctx.lineTo(x+w, y+h-r);
+        ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+        ctx.lineTo(x+r, y+h);
+        ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+        ctx.lineTo(x, y+r);
+        ctx.quadraticCurveTo(x, y, x+r, y);
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    function drawPod(ctx, x, y, w, h, r, color, label, util, queue, t){
+        // Shadow/glow
+        ctx.save();
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 10 + 4*Math.sin(t*3);
+        drawRoundRect(ctx, x, y, w, h, r, color + '33');
+        ctx.shadowBlur = 0;
+        ctx.restore();
+
+        // Border
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x+r, y);
+        ctx.lineTo(x+w-r, y);
+        ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+        ctx.lineTo(x+w, y+h-r);
+        ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+        ctx.lineTo(x+r, y+h);
+        ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+        ctx.lineTo(x, y+r);
+        ctx.quadraticCurveTo(x, y, x+r, y);
+        ctx.closePath();
+        ctx.stroke();
+
+        // Label
+        ctx.fillStyle = '#e2e8f0';
+        ctx.font = '600 11px Red Hat Text, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, x + w/2, y + 20);
+
+        // GPU utilization bar
+        const barX = x + 12, barY = y + 30, barW = w - 24, barH = 10;
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        drawRoundRect(ctx, barX, barY, barW, barH, 3, 'rgba(255,255,255,0.08)');
+        const fillW = barW * util;
+        if(fillW > 0){
+            drawRoundRect(ctx, barX, barY, fillW, barH, 3, color);
+        }
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.font = '500 9px Red Hat Text, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('GPU ' + Math.round(util*100) + '%', barX, barY + barH + 12);
+
+        // Queue indicator
+        if(queue > 0){
+            const qW = 6, qCount = Math.ceil(queue * 5);
+            for(let i=0; i<qCount; i++){
+                const qx = x - 12 - i*(qW+3);
+                const qy = y + h/2 - 8;
+                ctx.fillStyle = `rgba(59,130,246,${0.4 + 0.4*Math.sin(t*4+i)})`;
+                drawRoundRect(ctx, qx, qy, qW, 16, 2, ctx.fillStyle);
+            }
+        }
+    }
+
+    function drawConnectionLine(ctx, x1, y1, x2, y2, color, t){
+        const cx1 = x1 + (x2-x1)*0.3;
+        const cy1 = y1 - 20;
+        const cx2 = x1 + (x2-x1)*0.7;
+        const cy2 = y2 + 20;
+
+        ctx.strokeStyle = color + '40';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.bezierCurveTo(cx1, cy1, cx2, cy2, x2, y2);
+        ctx.stroke();
+
+        // Pulse glow
+        const pulseAlpha = 0.15 + 0.1 * Math.sin(t * 2);
+        ctx.strokeStyle = color + Math.round(pulseAlpha*255).toString(16).padStart(2,'0');
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.bezierCurveTo(cx1, cy1, cx2, cy2, x2, y2);
+        ctx.stroke();
+    }
+
+    // Slider listener
+    const slider = document.getElementById('sim-slider');
+    if(slider){
+        slider.addEventListener('input', function(){
+            loadLevel = parseInt(this.value);
+            document.getElementById('sim-load-val').textContent = loadLevel;
+            updateSimMetrics(loadLevel);
+        });
+    }
+
+    function updateSimMetrics(load){
+        // Interpolate TTFT
+        const ttft = lerp(0.65, 0.19, clamp(load/100, 0, 1));
+        document.getElementById('sim-ttft').textContent = ttft.toFixed(2) + 's';
+        // Throughput
+        const tput = lerp(45.5, 1483.4, clamp(load/100, 0, 1));
+        document.getElementById('sim-throughput').textContent = Math.round(tput);
+        // Pods
+        const counts = getPodCounts(load);
+        document.getElementById('sim-pods').textContent = counts.pp + counts.dp;
+        // Queue
+        const q = Math.max(0, Math.round((load - 20) * 0.3));
+        document.getElementById('sim-queue').textContent = q;
+        // GPU
+        const gpu = clamp(30 + load * 0.65, 30, 95);
+        document.getElementById('sim-gpu').textContent = Math.round(gpu) + '%';
+    }
+
+    draw();
+})();
+
+/* ============================================================
+   4. SPLIT-SCREEN COMPARISON
+   ============================================================ */
+(function comparisonSim(){
+    const uCanvas = document.getElementById('comp-unified-canvas');
+    const dCanvas = document.getElementById('comp-disagg-canvas');
+    const startBtn = document.getElementById('comp-start-btn');
+    const timerEl = document.getElementById('comp-timer');
+    if(!uCanvas || !dCanvas) return;
+
+    let running = false;
+    let simTime = 0;
+    let simDuration = 20;
+    let simRAF = null;
+    let lastTS = 0;
+
+    function resizeCompCanvases(){
+        const uw = uCanvas.parentElement.clientWidth - 56;
+        sizeCanvas(uCanvas, uw, 140);
+        const dw = dCanvas.parentElement.clientWidth - 56;
+        sizeCanvas(dCanvas, dw, 140);
+    }
+    resizeCompCanvases();
+    window.addEventListener('resize', resizeCompCanvases);
+
+    function drawUnifiedFrame(t){
+        const ctx = uCanvas.getContext('2d');
+        const w = uCanvas.clientWidth, h = uCanvas.clientHeight;
+        ctx.clearRect(0,0,w,h);
+
+        // Two pods that alternate colors
+        const podW = 100, podH = 50, gap = 40;
+        const startX = w/2 - (podW*2+gap)/2;
+
+        for(let i=0; i<2; i++){
+            const px = startX + i*(podW+gap);
+            const py = h/2 - podH/2;
+            // Phase oscillation
+            const phase = Math.sin(t*2 + i*Math.PI);
+            const r = phase > 0 ? 26 : 46;
+            const g = phase > 0 ? 95 : 194;
+            const b = phase > 0 ? 180 : 126;
+            ctx.fillStyle = `rgb(${r},${g},${b})`;
+            roundRect(ctx, px, py, podW, podH, 8);
+            ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.font = '600 10px Red Hat Text, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('GPU Pod ' + (i+1), px+podW/2, py+podH/2+4);
+
+            // GPU util bar oscillating
+            const util = 0.4 + 0.25 * Math.sin(t*3 + i*1.5);
+            const barY = py + podH + 8;
+            ctx.fillStyle = 'rgba(255,255,255,0.1)';
+            roundRect(ctx, px, barY, podW, 6, 3); ctx.fill();
+            ctx.fillStyle = `rgba(${r},${g},${b},0.8)`;
+            roundRect(ctx, px, barY, podW*util, 6, 3); ctx.fill();
+        }
+    }
+
+    function drawDisaggFrame(t){
+        const ctx = dCanvas.getContext('2d');
+        const w = dCanvas.clientWidth, h = dCanvas.clientHeight;
+        ctx.clearRect(0,0,w,h);
+
+        // Prefill pod (left), decode pods (right)
+        const podW = 80, podH = 40;
+        const pX = 30, pY = h/2 - podH/2;
+        ctx.fillStyle = '#1a5fb4';
+        roundRect(ctx, pX, pY, podW, podH, 8); ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = '600 9px Red Hat Text, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Prefill', pX+podW/2, pY+podH/2+3);
+
+        // Prefill util bar - stable high
+        const pUtil = 0.88 + 0.05*Math.sin(t*1.5);
+        ctx.fillStyle = 'rgba(255,255,255,0.1)';
+        roundRect(ctx, pX, pY+podH+6, podW, 5, 3); ctx.fill();
+        ctx.fillStyle = 'rgba(26,95,180,0.8)';
+        roundRect(ctx, pX, pY+podH+6, podW*pUtil, 5, 3); ctx.fill();
+
+        // Decode pods
+        const dX = w - 30 - podW;
+        for(let i=0; i<2; i++){
+            const dy = h/2 - (podH+12) + i*(podH+12);
+            ctx.fillStyle = '#2ec27e';
+            roundRect(ctx, dX, dy, podW, podH, 8); ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.font = '600 9px Red Hat Text, sans-serif';
+            ctx.fillText('Decode '+(i+1), dX+podW/2, dy+podH/2+3);
+
+            const dUtil = 0.90 + 0.03*Math.sin(t*1.2+i);
+            ctx.fillStyle = 'rgba(255,255,255,0.1)';
+            roundRect(ctx, dX, dy+podH+4, podW, 5, 3); ctx.fill();
+            ctx.fillStyle = 'rgba(46,194,126,0.8)';
+            roundRect(ctx, dX, dy+podH+4, podW*dUtil, 5, 3); ctx.fill();
+        }
+
+        // Connection lines with particles
+        const midX = (pX+podW + dX)/2;
+        for(let i=0; i<2; i++){
+            const dy = h/2 - (podH+12) + i*(podH+12) + podH/2;
+            ctx.strokeStyle = 'rgba(155,77,155,0.3)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(pX+podW, pY+podH/2);
+            ctx.quadraticCurveTo(midX, (pY+podH/2+dy)/2 - 15, dX, dy);
+            ctx.stroke();
+
+            // Particle
+            const pt = ((t*0.4 + i*0.5) % 1);
+            const ppx = pX+podW + (dX-pX-podW)*pt;
+            const ppy = pY+podH/2 + (dy-pY-podH/2)*pt - 10*Math.sin(pt*Math.PI);
+            ctx.beginPath();
+            ctx.arc(ppx, ppy, 3, 0, Math.PI*2);
+            ctx.fillStyle = `rgba(155,77,155,${Math.sin(pt*Math.PI)*0.8})`;
+            ctx.fill();
+        }
+
+        // KV label
+        ctx.fillStyle = '#9b4d9b';
+        ctx.font = '600 8px Red Hat Text, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('KV Transfer', midX, h/2 - 32);
+    }
+
+    function roundRect(ctx, x, y, w, h, r){
+        ctx.beginPath();
+        ctx.moveTo(x+r,y);
+        ctx.lineTo(x+w-r,y);
+        ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+        ctx.lineTo(x+w,y+h-r);
+        ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+        ctx.lineTo(x+r,y+h);
+        ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+        ctx.lineTo(x,y+r);
+        ctx.quadraticCurveTo(x,y,x+r,y);
+        ctx.closePath();
+    }
+
+    // Idle animation
+    let idleTime = 0;
+    function idleLoop(){
+        if(running) return;
+        idleTime += 0.016;
+        drawUnifiedFrame(idleTime);
+        drawDisaggFrame(idleTime);
+        requestAnimationFrame(idleLoop);
+    }
+    idleLoop();
+
+    startBtn.addEventListener('click', function(){
+        if(running) return;
+        running = true;
+        startBtn.disabled = true;
+        simTime = 0;
+        lastTS = performance.now();
+
+        function simTick(ts){
+            const dt = (ts - lastTS)/1000;
+            lastTS = ts;
+            simTime += dt;
+
+            if(simTime >= simDuration){
+                running = false;
+                startBtn.disabled = false;
+                timerEl.textContent = 'Simulation complete!';
+                setTimeout(()=>{ timerEl.textContent=''; idleLoop(); }, 2000);
+                return;
+            }
+
+            timerEl.textContent = 'Running: ' + Math.ceil(simDuration - simTime) + 's remaining';
+
+            drawUnifiedFrame(simTime);
+            drawDisaggFrame(simTime);
+
+            // Update metrics
+            const progress = simTime / simDuration;
+            const noise = () => (Math.random()-0.5)*0.1;
+
+            // Unified: worse metrics
+            const uTTFT = (1.2 + 0.8*Math.sin(simTime*0.7) + noise()).toFixed(2);
+            const uTput = Math.round(600 + 200*Math.sin(simTime*0.5) + Math.random()*50);
+            const uGPU = Math.round(55 + 10*Math.sin(simTime*0.8));
+            document.getElementById('comp-u-ttft').textContent = uTTFT + 's';
+            document.getElementById('comp-u-tput').textContent = uTput;
+            document.getElementById('comp-u-gpu').textContent = uGPU + '%';
+
+            // Disaggregated: better metrics
+            const dTTFT = (0.20 + 0.04*Math.sin(simTime*1.2) + noise()*0.3).toFixed(2);
+            const dTput = Math.round(1400 + 80*Math.sin(simTime*0.3) + Math.random()*30);
+            const dGPU = Math.round(88 + 5*Math.sin(simTime*0.6));
+            document.getElementById('comp-d-ttft').textContent = dTTFT + 's';
+            document.getElementById('comp-d-tput').textContent = dTput;
+            document.getElementById('comp-d-gpu').textContent = dGPU + '%';
+
+            simRAF = requestAnimationFrame(simTick);
+        }
+        simRAF = requestAnimationFrame(simTick);
+    });
+})();
+
+/* ============================================================
+   5. BENCHMARK CHARTS (Custom Canvas)
+   ============================================================ */
+(function benchCharts(){
+    // Tab switching
+    const tabs = document.querySelectorAll('.bench-tab');
+    const panels = document.querySelectorAll('.bench-panel');
+    tabs.forEach(tab=>{
+        tab.addEventListener('click',()=>{
+            tabs.forEach(t=>t.classList.remove('active'));
+            panels.forEach(p=>p.classList.remove('active'));
+            tab.classList.add('active');
+            document.getElementById(tab.dataset.tab).classList.add('active');
+            // Trigger animation
+            animatedCharts[tab.dataset.tab] && (animatedCharts[tab.dataset.tab].progress = 0);
+        });
+    });
+
+    const animatedCharts = {};
+    const chartObserver = new IntersectionObserver((entries)=>{
+        entries.forEach(e=>{
+            if(e.isIntersecting){
+                const id = e.target.id;
+                if(animatedCharts[id]) animatedCharts[id].progress = 0;
             }
         });
+    }, {threshold:0.3});
 
-        // Cache Reuse Chart
-        const cacheCtx = document.getElementById('cache-chart').getContext('2d');
-        new Chart(cacheCtx, {
-            type: 'bar',
-            data: {
-                labels: ['Round-robin\nRouting', 'Cache-aware\nRouting (Cached)', 'Cache-aware\nRouting (Cold)'],
-                datasets: [{
-                    label: 'TTFT at 32K tokens (seconds)',
-                    data: [4.5, 0.24, 4.74],
-                    backgroundColor: [
-                        'rgba(239, 68, 68, 0.8)',
-                        'rgba(46, 194, 126, 0.8)',
-                        'rgba(155, 77, 155, 0.8)'
-                    ],
-                    borderColor: [
-                        '#ef4444',
-                        '#2ec27e',
-                        '#9b4d9b'
-                    ],
-                    borderWidth: 2
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'top',
-                        labels: {
-                            color: '#e2e8f0',
-                            font: {
-                                size: 14,
-                                weight: 600
-                            }
-                        }
-                    },
-                    tooltip: {
-                        backgroundColor: '#1a1a2e',
-                        borderColor: '#3b82f6',
-                        borderWidth: 1,
-                        titleColor: '#e2e8f0',
-                        bodyColor: '#94a3b8',
-                        padding: 12
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'TTFT (seconds)',
-                            color: '#e2e8f0',
-                            font: {
-                                size: 14,
-                                weight: 600
-                            }
-                        },
-                        grid: {
-                            color: '#1e293b'
-                        }
-                    },
-                    x: {
-                        grid: {
-                            color: '#1e293b'
-                        }
-                    }
-                }
-            }
-        });
+    // ---- TTFT Line Chart ----
+    (function(){
+        const canvas = document.getElementById('chart-ttft');
+        if(!canvas) return;
+        const tooltip = document.getElementById('tt-ttft');
+        const labels = ['500','1K','4K','8K','16K','32K'];
+        const cold = [0.65, 0.24, 0.45, 0.93, 1.90, 4.74];
+        const cached = [0.16, 0.16, 0.16, 0.25, 0.19, 0.24];
+        const speedups = ['4.0x','1.5x','2.8x','3.8x','10.0x','19.8x'];
+        const maxY = 5.5;
 
-        // Intersection Observer for animations
-        const observerOptions = {
-            threshold: 0.3,
-            rootMargin: '0px'
-        };
+        let progress = 0;
+        animatedCharts['bench-ttft'] = {progress:0};
+        chartObserver.observe(canvas);
 
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('visible');
-                }
+        function draw(){
+            const p = animatedCharts['bench-ttft'];
+            p.progress = Math.min(1, p.progress + 0.015);
+            const t = easeOutCubic(p.progress);
+
+            const rect = canvas.parentElement.getBoundingClientRect();
+            const W = rect.width - 56;
+            const H = 380;
+            const ctx = sizeCanvas(canvas, W, H);
+
+            const pad = {top:30, right:30, bottom:50, left:65};
+            const cw = W - pad.left - pad.right;
+            const ch = H - pad.top - pad.bottom;
+
+            // Grid
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1;
+            const yTicks = [0,1,2,3,4,5];
+            yTicks.forEach(v=>{
+                const y = pad.top + ch - (v/maxY)*ch;
+                ctx.beginPath();
+                ctx.moveTo(pad.left, y);
+                ctx.lineTo(pad.left+cw, y);
+                ctx.stroke();
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = '500 11px Red Hat Text, sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText(v+'s', pad.left-10, y+4);
             });
-        }, observerOptions);
 
-        document.querySelectorAll('.impact-card').forEach(card => {
-            observer.observe(card);
+            // X labels
+            labels.forEach((l,i)=>{
+                const x = pad.left + (i/(labels.length-1))*cw;
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = '500 11px Red Hat Text, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(l, x, H - pad.bottom + 20);
+            });
+
+            // Axis labels
+            ctx.save();
+            ctx.translate(16, pad.top + ch/2);
+            ctx.rotate(-Math.PI/2);
+            ctx.fillStyle = '#e2e8f0';
+            ctx.font = '600 12px Red Hat Text, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('TTFT (seconds)', 0, 0);
+            ctx.restore();
+
+            ctx.fillStyle = '#e2e8f0';
+            ctx.font = '600 12px Red Hat Text, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Context Length (tokens)', pad.left + cw/2, H - 6);
+
+            // Draw filled area and line for cold
+            drawLineWithArea(ctx, cold, '#ef4444', 'rgba(239,68,68,0.12)', maxY, pad, cw, ch, t, labels.length);
+            // Draw filled area and line for cached
+            drawLineWithArea(ctx, cached, '#2ec27e', 'rgba(46,194,126,0.12)', maxY, pad, cw, ch, t, labels.length);
+
+            // Speedup annotations
+            if(t > 0.8){
+                const annoAlpha = (t - 0.8) / 0.2;
+                labels.forEach((l,i)=>{
+                    const x = pad.left + (i/(labels.length-1))*cw;
+                    const yc = pad.top + ch - (cold[i]/maxY)*ch;
+                    const ya = pad.top + ch - (cached[i]/maxY)*ch;
+                    const my = (yc + ya)/2;
+                    ctx.fillStyle = `rgba(155,77,155,${annoAlpha})`;
+                    ctx.font = '700 10px Red Hat Display, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(speedups[i], x, my);
+                });
+            }
+
+            // Legend
+            ctx.fillStyle = '#ef4444';
+            ctx.fillRect(pad.left, 8, 16, 3);
+            ctx.fillStyle = '#e2e8f0';
+            ctx.font = '600 11px Red Hat Text, sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText('Cold / Uncached', pad.left+22, 13);
+
+            ctx.fillStyle = '#2ec27e';
+            ctx.fillRect(pad.left+150, 8, 16, 3);
+            ctx.fillStyle = '#e2e8f0';
+            ctx.fillText('Cached', pad.left+172, 13);
+
+            requestAnimationFrame(draw);
+        }
+
+        function drawLineWithArea(ctx, data, lineColor, fillColor, maxY, pad, cw, ch, t, count){
+            const pts = data.map((v,i)=>({
+                x: pad.left + (i/(count-1))*cw,
+                y: pad.top + ch - (v/maxY)*ch
+            }));
+
+            // How many points to draw based on animation
+            const drawCount = Math.ceil(t * pts.length);
+            if(drawCount < 1) return;
+
+            // Filled area
+            ctx.fillStyle = fillColor;
+            ctx.beginPath();
+            ctx.moveTo(pts[0].x, pad.top + ch);
+            for(let i=0; i<drawCount; i++){
+                const frac = i < drawCount-1 ? 1 : (t*pts.length - Math.floor(t*pts.length));
+                if(i === 0){
+                    ctx.lineTo(pts[0].x, pts[0].y);
+                } else {
+                    const prevX = pts[i-1].x, prevY = pts[i-1].y;
+                    const curX = pts[i].x, curY = pts[i].y;
+                    if(i < drawCount-1){
+                        ctx.lineTo(curX, curY);
+                    } else {
+                        ctx.lineTo(lerp(prevX, curX, frac), lerp(prevY, curY, frac));
+                    }
+                }
+            }
+            const lastDrawnX = drawCount >= pts.length ? pts[pts.length-1].x :
+                lerp(pts[drawCount-1].x, pts[Math.min(drawCount, pts.length-1)].x, (t*pts.length - Math.floor(t*pts.length)));
+            ctx.lineTo(lastDrawnX, pad.top + ch);
+            ctx.closePath();
+            ctx.fill();
+
+            // Line
+            ctx.strokeStyle = lineColor;
+            ctx.lineWidth = 3;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            for(let i=0; i<drawCount && i<pts.length; i++){
+                if(i===0) ctx.moveTo(pts[0].x, pts[0].y);
+                else ctx.lineTo(pts[i].x, pts[i].y);
+            }
+            ctx.stroke();
+
+            // Dots
+            for(let i=0; i<drawCount && i<pts.length; i++){
+                ctx.beginPath();
+                ctx.arc(pts[i].x, pts[i].y, 5, 0, Math.PI*2);
+                ctx.fillStyle = lineColor;
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(pts[i].x, pts[i].y, 3, 0, Math.PI*2);
+                ctx.fillStyle = '#0a0e17';
+                ctx.fill();
+            }
+        }
+
+        // Tooltip
+        canvas.addEventListener('mousemove', function(e){
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const W = canvas.clientWidth;
+            const pad = {left:65, right:30, top:30, bottom:50};
+            const cw = W - pad.left - pad.right;
+            const idx = Math.round(((mx - pad.left) / cw) * (labels.length-1));
+            if(idx >= 0 && idx < labels.length){
+                tooltip.style.opacity = '1';
+                tooltip.style.left = (pad.left + (idx/(labels.length-1))*cw + 10) + 'px';
+                tooltip.style.top = '40px';
+                tooltip.innerHTML = '<div class="tt-title">' + labels[idx] + ' tokens</div>'
+                    + '<div class="tt-val">Cold: ' + cold[idx] + 's</div>'
+                    + '<div class="tt-val">Cached: ' + cached[idx] + 's</div>'
+                    + '<div class="tt-val" style="color:#9b4d9b">Speedup: ' + speedups[idx] + '</div>';
+            }
         });
-    </script>
+        canvas.addEventListener('mouseleave', ()=>{ tooltip.style.opacity='0'; });
+
+        draw();
+    })();
+
+    // ---- Throughput Bar Chart ----
+    (function(){
+        const canvas = document.getElementById('chart-tput');
+        if(!canvas) return;
+        const tooltip = document.getElementById('tt-tput');
+        const labels = ['1','5','10','50'];
+        const values = [45.5, 175.3, 359.8, 1483.4];
+        const maxY = 1600;
+
+        animatedCharts['bench-tput'] = {progress:0};
+        chartObserver.observe(canvas);
+
+        function draw(){
+            const p = animatedCharts['bench-tput'];
+            p.progress = Math.min(1, p.progress + 0.015);
+            const t = easeOutCubic(p.progress);
+
+            const rect = canvas.parentElement.getBoundingClientRect();
+            const W = rect.width - 56;
+            const H = 380;
+            const ctx = sizeCanvas(canvas, W, H);
+
+            const pad = {top:30, right:30, bottom:50, left:70};
+            const cw = W - pad.left - pad.right;
+            const ch = H - pad.top - pad.bottom;
+
+            // Grid
+            ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 1;
+            [0,400,800,1200,1600].forEach(v=>{
+                const y = pad.top + ch - (v/maxY)*ch;
+                ctx.beginPath(); ctx.moveTo(pad.left,y); ctx.lineTo(pad.left+cw,y); ctx.stroke();
+                ctx.fillStyle='#94a3b8'; ctx.font='500 11px Red Hat Text, sans-serif';
+                ctx.textAlign='right'; ctx.fillText(v, pad.left-10, y+4);
+            });
+
+            // Bars
+            const barW = cw / (labels.length * 2);
+            const barGap = cw / labels.length;
+
+            values.forEach((v,i)=>{
+                const x = pad.left + i*barGap + barGap/2 - barW/2;
+                const barH = (v/maxY)*ch * t;
+                const y = pad.top + ch - barH;
+
+                // Gradient bar
+                const grad = ctx.createLinearGradient(x, y, x, pad.top+ch);
+                grad.addColorStop(0, '#3b82f6');
+                grad.addColorStop(1, '#1a5fb4');
+                ctx.fillStyle = grad;
+                roundRect2(ctx, x, y, barW, barH, 6);
+
+                // Value on top
+                if(t > 0.7){
+                    const valAlpha = (t-0.7)/0.3;
+                    ctx.fillStyle = `rgba(226,232,240,${valAlpha})`;
+                    ctx.font = '700 12px Red Hat Display, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(v.toLocaleString(), x+barW/2, y-8);
+                }
+
+                // X label
+                ctx.fillStyle='#94a3b8'; ctx.font='500 11px Red Hat Text, sans-serif';
+                ctx.textAlign='center';
+                ctx.fillText(labels[i], x+barW/2, H-pad.bottom+20);
+            });
+
+            // Axis labels
+            ctx.save();
+            ctx.translate(16, pad.top+ch/2);
+            ctx.rotate(-Math.PI/2);
+            ctx.fillStyle='#e2e8f0'; ctx.font='600 12px Red Hat Text, sans-serif';
+            ctx.textAlign='center'; ctx.fillText('Tokens / second', 0, 0);
+            ctx.restore();
+
+            ctx.fillStyle='#e2e8f0'; ctx.font='600 12px Red Hat Text, sans-serif';
+            ctx.textAlign='center'; ctx.fillText('Concurrent Requests', pad.left+cw/2, H-6);
+
+            requestAnimationFrame(draw);
+        }
+
+        function roundRect2(ctx, x, y, w, h, r){
+            if(h < r*2) r = h/2;
+            ctx.beginPath();
+            ctx.moveTo(x+r,y);
+            ctx.lineTo(x+w-r,y);
+            ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+            ctx.lineTo(x+w,y+h);
+            ctx.lineTo(x,y+h);
+            ctx.lineTo(x,y+r);
+            ctx.quadraticCurveTo(x,y,x+r,y);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        canvas.addEventListener('mousemove', function(e){
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const W = canvas.clientWidth;
+            const pad = {left:70, right:30};
+            const cw = W - pad.left - pad.right;
+            const barGap = cw / labels.length;
+            const idx = Math.floor((mx - pad.left) / barGap);
+            if(idx >= 0 && idx < labels.length){
+                tooltip.style.opacity='1';
+                tooltip.style.left = (pad.left + idx*barGap + barGap/2 + 10)+'px';
+                tooltip.style.top = '40px';
+                tooltip.innerHTML = '<div class="tt-title">' + labels[idx] + ' concurrent requests</div>'
+                    + '<div class="tt-val">' + values[idx] + ' tok/s</div>';
+            }
+        });
+        canvas.addEventListener('mouseleave', ()=>{ tooltip.style.opacity='0'; });
+
+        draw();
+    })();
+
+    // ---- Cache Reuse Bar Chart ----
+    (function(){
+        const canvas = document.getElementById('chart-cache');
+        if(!canvas) return;
+        const tooltip = document.getElementById('tt-cache');
+        const labels = ['Round-Robin\nRouting','Cache-Aware\n(Cached)','Cache-Aware\n(Cold)'];
+        const values = [4.5, 0.24, 4.74];
+        const colors = ['#ef4444','#2ec27e','#9b4d9b'];
+        const maxY = 5.5;
+
+        animatedCharts['bench-cache'] = {progress:0};
+        chartObserver.observe(canvas);
+
+        function draw(){
+            const p = animatedCharts['bench-cache'];
+            p.progress = Math.min(1, p.progress + 0.015);
+            const t = easeOutCubic(p.progress);
+
+            const rect = canvas.parentElement.getBoundingClientRect();
+            const W = rect.width - 56;
+            const H = 380;
+            const ctx = sizeCanvas(canvas, W, H);
+
+            const pad = {top:30, right:30, bottom:60, left:65};
+            const cw = W - pad.left - pad.right;
+            const ch = H - pad.top - pad.bottom;
+
+            // Grid
+            ctx.strokeStyle='#1e293b'; ctx.lineWidth=1;
+            [0,1,2,3,4,5].forEach(v=>{
+                const y = pad.top + ch - (v/maxY)*ch;
+                ctx.beginPath(); ctx.moveTo(pad.left,y); ctx.lineTo(pad.left+cw,y); ctx.stroke();
+                ctx.fillStyle='#94a3b8'; ctx.font='500 11px Red Hat Text, sans-serif';
+                ctx.textAlign='right'; ctx.fillText(v+'s', pad.left-10, y+4);
+            });
+
+            // Bars
+            const barW = cw / (labels.length * 2.5);
+            const barGap = cw / labels.length;
+
+            values.forEach((v,i)=>{
+                const x = pad.left + i*barGap + barGap/2 - barW/2;
+                const barH = (v/maxY)*ch * t;
+                const y = pad.top + ch - barH;
+
+                const grad = ctx.createLinearGradient(x, y, x, pad.top+ch);
+                grad.addColorStop(0, colors[i]);
+                grad.addColorStop(1, colors[i] + '66');
+                ctx.fillStyle = grad;
+                // Draw bar
+                ctx.beginPath();
+                const r = 6;
+                if(barH > r*2){
+                    ctx.moveTo(x+r,y); ctx.lineTo(x+barW-r,y);
+                    ctx.quadraticCurveTo(x+barW,y,x+barW,y+r);
+                    ctx.lineTo(x+barW,y+barH); ctx.lineTo(x,y+barH);
+                    ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y);
+                } else {
+                    ctx.rect(x,y,barW,barH);
+                }
+                ctx.closePath(); ctx.fill();
+
+                // Value
+                if(t > 0.7){
+                    const a = (t-0.7)/0.3;
+                    ctx.fillStyle = `rgba(226,232,240,${a})`;
+                    ctx.font = '700 13px Red Hat Display, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(v+'s', x+barW/2, y-10);
+                }
+
+                // X label (multi-line)
+                const lines = labels[i].split('\n');
+                ctx.fillStyle='#94a3b8'; ctx.font='500 10px Red Hat Text, sans-serif';
+                ctx.textAlign='center';
+                lines.forEach((line,li)=>{
+                    ctx.fillText(line, x+barW/2, H-pad.bottom+16+li*14);
+                });
+            });
+
+            // Y axis label
+            ctx.save();
+            ctx.translate(14, pad.top+ch/2);
+            ctx.rotate(-Math.PI/2);
+            ctx.fillStyle='#e2e8f0'; ctx.font='600 12px Red Hat Text, sans-serif';
+            ctx.textAlign='center'; ctx.fillText('TTFT (seconds)', 0, 0);
+            ctx.restore();
+
+            requestAnimationFrame(draw);
+        }
+
+        canvas.addEventListener('mousemove', function(e){
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const W = canvas.clientWidth;
+            const pad = {left:65, right:30};
+            const cw = W - pad.left - pad.right;
+            const barGap = cw / labels.length;
+            const idx = Math.floor((mx - pad.left) / barGap);
+            if(idx >= 0 && idx < labels.length){
+                tooltip.style.opacity='1';
+                tooltip.style.left = (pad.left + idx*barGap + barGap/2 + 10)+'px';
+                tooltip.style.top = '40px';
+                tooltip.innerHTML = '<div class="tt-title">' + labels[idx].replace('\n',' ') + '</div>'
+                    + '<div class="tt-val">TTFT: ' + values[idx] + 's</div>';
+            }
+        });
+        canvas.addEventListener('mouseleave', ()=>{ tooltip.style.opacity='0'; });
+
+        draw();
+    })();
+
+    function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
+})();
+
+/* ============================================================
+   6. GPU UTILIZATION HEATMAP
+   ============================================================ */
+(function heatmap(){
+    const pods = ['Prefill Pod 1','Prefill Pod 2','Decode Pod 1','Decode Pod 2','Decode Pod 3'];
+    const timeSteps = 16;
+    const timeLabels = [];
+    for(let i=0;i<timeSteps;i++) timeLabels.push(i+'s');
+
+    // Compute utilization: prefill high, decode low
+    const computeBase = [
+        pods.map((_,p)=> p<2 ? 0.85+Math.random()*0.1 : 0.12+Math.random()*0.08)
+    ];
+    // Memory: prefill moderate, decode high
+    const memBase = [
+        pods.map((_,p)=> p<2 ? 0.45+Math.random()*0.15 : 0.82+Math.random()*0.12)
+    ];
+
+    function buildHeatmap(containerId, isPrefillHigh){
+        const container = document.getElementById(containerId);
+        if(!container) return;
+
+        pods.forEach((pod,pi)=>{
+            const row = document.createElement('div');
+            row.className = 'hm-row';
+            const label = document.createElement('div');
+            label.className = 'hm-label';
+            label.textContent = pod;
+            row.appendChild(label);
+
+            const cells = document.createElement('div');
+            cells.className = 'hm-cells';
+
+            for(let t=0; t<timeSteps; t++){
+                const cell = document.createElement('div');
+                cell.className = 'hm-cell';
+                let val;
+                if(isPrefillHigh){
+                    // Compute: prefill=high, decode=low
+                    val = pi < 2 ? 0.80 + Math.random()*0.15 : 0.10 + Math.random()*0.10;
+                } else {
+                    // Memory: prefill=moderate, decode=high
+                    val = pi < 2 ? 0.40 + Math.random()*0.20 : 0.78 + Math.random()*0.15;
+                }
+                // Add time variation
+                val += 0.05*Math.sin(t*0.5 + pi);
+                val = clamp(val, 0, 1);
+                cell.style.background = heatColor(val);
+                cell.dataset.val = val.toFixed(2);
+                cells.appendChild(cell);
+            }
+            row.appendChild(cells);
+            container.appendChild(row);
+        });
+
+        // Time labels
+        const tlRow = document.createElement('div');
+        tlRow.className = 'hm-time-labels';
+        for(let t=0; t<timeSteps; t++){
+            const tl = document.createElement('div');
+            tl.className = 'hm-time-label';
+            tl.textContent = t%4===0 ? t+'s' : '';
+            tlRow.appendChild(tl);
+        }
+        container.appendChild(tlRow);
+    }
+
+    function heatColor(v){
+        // dark blue -> bright blue -> white
+        const r = Math.round(lerp(12, 224, Math.pow(v,2)));
+        const g = Math.round(lerp(26, 240, Math.pow(v,2.5)));
+        const b = Math.round(lerp(58, 255, Math.pow(v,1.5)));
+        return `rgb(${r},${g},${b})`;
+    }
+
+    buildHeatmap('hm-compute', true);
+    buildHeatmap('hm-memory', false);
+
+    // Animate heatmap cells with subtle pulse
+    function pulseHeatmap(){
+        const cells = document.querySelectorAll('.hm-cell');
+        const t = performance.now() / 1000;
+        cells.forEach((cell, i)=>{
+            const baseVal = parseFloat(cell.dataset.val);
+            const pulse = baseVal + 0.03 * Math.sin(t*2 + i*0.3);
+            cell.style.background = heatColor(clamp(pulse, 0, 1));
+        });
+        requestAnimationFrame(pulseHeatmap);
+    }
+    pulseHeatmap();
+})();
+
+/* ============================================================
+   7. SPARKLINE CHARTS
+   ============================================================ */
+(function sparklines(){
+    const sparks = [
+        { id:'spark-ttft', valId:'spark-ttft-val', color:'#3b82f6', base:0.24, range:0.08, suffix:'s', format:v=>v.toFixed(2)+'s' },
+        { id:'spark-tput', valId:'spark-tput-val', color:'#2ec27e', base:1483, range:80, suffix:'', format:v=>Math.round(v).toLocaleString() },
+        { id:'spark-kv',   valId:'spark-kv-val',   color:'#9b4d9b', base:1.2, range:0.4, suffix:'ms', format:v=>v.toFixed(1)+'ms' }
+    ];
+
+    const dataLen = 60; // 30 seconds at 2 per sec
+    const datas = sparks.map(()=>{
+        const d = [];
+        for(let i=0;i<dataLen;i++) d.push(0.5 + Math.random()*0.3);
+        return d;
+    });
+
+    function drawSpark(canvas, data, color){
+        const W = canvas.clientWidth;
+        const H = canvas.clientHeight;
+        const ctx = sizeCanvas(canvas, W, H);
+
+        const min = Math.min(...data) - 0.05;
+        const max = Math.max(...data) + 0.05;
+        const range = max - min || 1;
+
+        // Filled area
+        ctx.fillStyle = color + '18';
+        ctx.beginPath();
+        ctx.moveTo(0, H);
+        data.forEach((v,i)=>{
+            const x = (i/(data.length-1))*W;
+            const y = H - ((v-min)/range)*H*0.85 - H*0.05;
+            ctx.lineTo(x, y);
+        });
+        ctx.lineTo(W, H);
+        ctx.closePath();
+        ctx.fill();
+
+        // Line
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        data.forEach((v,i)=>{
+            const x = (i/(data.length-1))*W;
+            const y = H - ((v-min)/range)*H*0.85 - H*0.05;
+            if(i===0) ctx.moveTo(x,y);
+            else ctx.lineTo(x,y);
+        });
+        ctx.stroke();
+
+        // Last point dot
+        const lastX = W;
+        const lastY = H - ((data[data.length-1]-min)/range)*H*0.85 - H*0.05;
+        ctx.beginPath();
+        ctx.arc(lastX, lastY, 3, 0, Math.PI*2);
+        ctx.fillStyle = color;
+        ctx.fill();
+    }
+
+    function update(){
+        sparks.forEach((s,si)=>{
+            const canvas = document.getElementById(s.id);
+            if(!canvas) return;
+            // Add new data point
+            const newVal = s.base + (Math.random()-0.5)*s.range*2;
+            // Normalize to 0-1 for sparkline rendering
+            datas[si].push(newVal);
+            if(datas[si].length > dataLen) datas[si].shift();
+            // Draw
+            drawSpark(canvas, datas[si], s.color);
+            // Update value
+            const valEl = document.getElementById(s.valId);
+            if(valEl) valEl.textContent = s.format(newVal);
+        });
+    }
+
+    update();
+    setInterval(update, 500);
+    window.addEventListener('resize', update);
+})();
+
+/* ============================================================
+   8. ARCHITECTURE DEEP DIVE TOGGLE
+   ============================================================ */
+(function(){
+    const btn = document.getElementById('dd-toggle');
+    const content = document.getElementById('dd-content');
+    if(!btn || !content) return;
+    btn.addEventListener('click', ()=>{
+        const open = content.classList.toggle('open');
+        btn.textContent = open ? 'Hide Architecture Deep Dive' : 'Show Architecture Deep Dive';
+    });
+})();
+
+/* ============================================================
+   9. COPY CODE BUTTONS
+   ============================================================ */
+window.copyCode = function(button){
+    const codeBlock = button.parentElement.querySelector('pre');
+    if(!codeBlock) return;
+    navigator.clipboard.writeText(codeBlock.textContent).then(()=>{
+        button.textContent = 'Copied!';
+        button.classList.add('copied');
+        setTimeout(()=>{ button.textContent='Copy'; button.classList.remove('copied'); }, 2000);
+    });
+};
+
+/* ============================================================
+   10. PERFORMANCE IMPACT CARDS - Intersection Observer
+   ============================================================ */
+(function(){
+    const observer = new IntersectionObserver((entries)=>{
+        entries.forEach(e=>{
+            if(e.isIntersecting) e.target.classList.add('visible');
+        });
+    }, {threshold:0.3});
+    document.querySelectorAll('.impact-card').forEach(card=>observer.observe(card));
+})();
+
+})(); // end IIFE
+</script>
 </body>
 </html>

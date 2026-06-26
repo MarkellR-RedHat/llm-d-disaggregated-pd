@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Deploying llm-d with Disaggregated Prefill and Decode: Separate the Phases, Double the Throughput</title>
-    <meta name="description" content="How to deploy llm-d with disaggregated prefill and decode on OpenShift for up to 19.8x TTFT improvement with Llama 3.3 70B on H200 GPUs.">
+    <title>Disaggregated Prefill and Decode in llm-d: A Deep Technical Guide</title>
+    <meta name="description" content="A deep technical guide to disaggregated prefill and decode in llm-d. Covers arithmetic intensity math, KV cache transfer mechanisms (NIXL, RDMA, RoCE), pd-sidecar architecture, and production benchmarks on H200 GPUs with Llama 3.3 70B.">
     <link rel="icon" type="image/png" href="https://llm-d.ai/img/llm-d-icon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@500;700&family=Red+Hat+Text:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@500;700;900&family=Red+Hat+Text:wght@400;500;600&family=Red+Hat+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -18,184 +18,333 @@
 
         body {
             font-family: 'Red Hat Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            line-height: 1.7;
-            color: #1a1a1a;
-            background: #ffffff;
-            padding: 40px 20px;
+            line-height: 1.8;
+            color: #e2e8f0;
+            background: #0a0e17;
+            padding: 0;
         }
 
-        .container {
-            max-width: 820px;
+        .hero {
+            background: linear-gradient(180deg, #0f1729 0%, #0a0e17 100%);
+            border-bottom: 1px solid #1e293b;
+            padding: 60px 20px 48px;
+            text-align: center;
+        }
+
+        .hero-inner {
+            max-width: 860px;
             margin: 0 auto;
         }
 
-        h1, h2, h3, h4 {
+        .hero-badge {
+            display: inline-block;
+            background: rgba(59, 130, 246, 0.15);
+            color: #3b82f6;
+            font-size: 0.85rem;
+            font-weight: 600;
+            padding: 6px 16px;
+            border-radius: 20px;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            margin-bottom: 24px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .hero h1 {
+            font-family: 'Red Hat Display', sans-serif;
+            font-weight: 900;
+            font-size: 2.8rem;
+            line-height: 1.2;
+            color: #f1f5f9;
+            margin-bottom: 20px;
+        }
+
+        .hero .subtitle {
+            font-size: 1.15rem;
+            color: #94a3b8;
+            max-width: 640px;
+            margin: 0 auto 24px;
+            line-height: 1.6;
+        }
+
+        .hero .byline {
+            font-size: 0.95rem;
+            color: #64748b;
+        }
+
+        .hero .byline strong {
+            color: #94a3b8;
+            font-weight: 600;
+        }
+
+        .container {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 48px 20px 60px;
+        }
+
+        h2 {
             font-family: 'Red Hat Display', sans-serif;
             font-weight: 700;
+            font-size: 1.85rem;
             line-height: 1.3;
+            color: #f1f5f9;
+            margin-top: 3em;
+            margin-bottom: 1em;
+            padding-bottom: 0.4em;
+            border-bottom: 1px solid #1e293b;
+        }
+
+        h3 {
+            font-family: 'Red Hat Display', sans-serif;
+            font-weight: 700;
+            font-size: 1.35rem;
+            line-height: 1.3;
+            color: #e2e8f0;
             margin-top: 2em;
             margin-bottom: 0.8em;
         }
 
-        h1 {
-            font-size: 2.5rem;
-            margin-top: 0.5em;
-            margin-bottom: 0.5em;
-        }
-
-        h2 {
-            font-size: 1.8rem;
-            border-bottom: 2px solid #f5f5f5;
-            padding-bottom: 0.3em;
-        }
-
-        h3 {
-            font-size: 1.4rem;
+        h4 {
+            font-family: 'Red Hat Display', sans-serif;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: #cbd5e1;
+            margin-top: 1.5em;
+            margin-bottom: 0.6em;
         }
 
         p {
-            margin-bottom: 1.3em;
+            margin-bottom: 1.4em;
+            color: #cbd5e1;
         }
 
         a {
-            color: #0066cc;
+            color: #3b82f6;
             text-decoration: none;
             border-bottom: 1px solid transparent;
             transition: border-color 0.2s ease;
         }
 
         a:hover {
-            border-bottom-color: #0066cc;
+            border-bottom-color: #3b82f6;
         }
 
-        .meta-header {
-            background: #f5f5f5;
-            padding: 20px 24px;
-            border-radius: 6px;
-            margin-bottom: 32px;
-            font-size: 0.95rem;
-            line-height: 1.6;
-        }
-
-        .meta-header p {
-            margin-bottom: 0.6em;
-        }
-
-        .meta-header p:last-child {
-            margin-bottom: 0;
-        }
-
-        .meta-header strong {
+        strong {
+            color: #e2e8f0;
             font-weight: 600;
         }
 
-        .checklist {
-            margin-top: 12px;
-            padding-left: 20px;
+        ul, ol {
+            margin-bottom: 1.4em;
+            padding-left: 28px;
+            color: #cbd5e1;
         }
 
-        .checklist li {
-            margin-bottom: 4px;
-        }
-
-        .byline {
-            font-size: 1.1rem;
-            color: #666;
-            margin-bottom: 2em;
-            font-style: italic;
+        li {
+            margin-bottom: 0.6em;
         }
 
         blockquote {
-            border-left: 4px solid #cc0000;
-            background: #fdf6f6;
-            padding: 16px 20px;
-            margin: 1.5em 0;
-            font-size: 1.05rem;
-            font-weight: 500;
+            border-left: 4px solid #3b82f6;
+            background: rgba(59, 130, 246, 0.06);
+            padding: 18px 24px;
+            margin: 1.8em 0;
+            border-radius: 0 8px 8px 0;
         }
 
         blockquote p {
             margin-bottom: 0;
+            color: #94a3b8;
+            font-size: 1.05rem;
+            font-weight: 500;
         }
 
         .callout {
-            border-left: 4px solid #0066cc;
-            background: #f0f7ff;
-            padding: 16px 20px;
-            margin: 1.5em 0;
-            font-size: 0.98rem;
+            border-left: 4px solid #3b82f6;
+            background: rgba(59, 130, 246, 0.1);
+            padding: 18px 24px;
+            margin: 1.8em 0;
+            border-radius: 0 8px 8px 0;
         }
 
         .callout p {
             margin-bottom: 0;
+            color: #94a3b8;
+            font-size: 0.98rem;
+        }
+
+        .callout-warn {
+            border-left-color: #f59e0b;
+            background: rgba(245, 158, 11, 0.08);
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 1.5em 0;
+            margin: 1.8em 0;
             font-size: 0.95rem;
+            border: 1px solid #1e293b;
+            border-radius: 8px;
+            overflow: hidden;
         }
 
         th {
-            background: #f5f5f5;
+            background: #1a1a2e;
+            color: #e2e8f0;
             font-weight: 600;
             text-align: left;
-            padding: 12px 16px;
-            border: 1px solid #e0e0e0;
+            padding: 14px 18px;
+            border-bottom: 2px solid #3b82f6;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
         }
 
         td {
-            padding: 10px 16px;
-            border: 1px solid #e0e0e0;
+            padding: 12px 18px;
+            border-bottom: 1px solid #1e293b;
+            color: #cbd5e1;
         }
 
         tbody tr:nth-child(even) {
-            background: #fafafa;
+            background: #0d1117;
+        }
+
+        tbody tr:hover {
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        td.highlight {
+            color: #3b82f6;
+            font-weight: 600;
         }
 
         pre {
-            background: #f5f5f5;
-            border: 1px solid #e0e0e0;
-            border-radius: 6px;
-            padding: 20px;
+            background: #0d1117;
+            border: 1px solid #1e293b;
+            border-radius: 8px;
+            padding: 24px;
             overflow-x: auto;
-            margin: 1.5em 0;
-            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+            margin: 1.8em 0;
+            font-family: 'Red Hat Mono', 'Monaco', 'Menlo', 'Consolas', monospace;
             font-size: 0.88rem;
-            line-height: 1.5;
+            line-height: 1.6;
         }
 
         code {
-            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
-            font-size: 0.9em;
-            background: #f5f5f5;
-            padding: 2px 6px;
-            border-radius: 3px;
+            font-family: 'Red Hat Mono', 'Monaco', 'Menlo', 'Consolas', monospace;
+            font-size: 0.88em;
+            background: #1a1a2e;
+            color: #93c5fd;
+            padding: 2px 7px;
+            border-radius: 4px;
+            border: 1px solid #1e293b;
         }
 
         pre code {
             background: none;
             padding: 0;
+            border: none;
+            color: #e2e8f0;
         }
 
-        .yaml-key { color: #0066cc; font-weight: 500; }
-        .yaml-string { color: #008000; }
-        .yaml-number { color: #cc0000; }
-        .yaml-comment { color: #999; font-style: italic; }
+        .yaml-key { color: #93c5fd; font-weight: 500; }
+        .yaml-string { color: #86efac; }
+        .yaml-number { color: #c4b5fd; }
+        .yaml-comment { color: #64748b; font-style: italic; }
+
+        .math-block {
+            background: #0d1117;
+            border: 1px solid #1e293b;
+            border-radius: 8px;
+            padding: 24px 28px;
+            margin: 1.8em 0;
+            font-family: 'Red Hat Mono', monospace;
+            font-size: 0.92rem;
+            line-height: 1.8;
+            color: #e2e8f0;
+            overflow-x: auto;
+        }
+
+        .math-block .math-label {
+            color: #3b82f6;
+            font-weight: 600;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .math-block .math-result {
+            color: #86efac;
+            font-weight: 600;
+        }
+
+        .math-block .math-dim {
+            color: #94a3b8;
+        }
+
+        .arch-diagram {
+            background: #0d1117;
+            border: 1px solid #1e293b;
+            border-radius: 8px;
+            padding: 32px 20px;
+            margin: 2em 0;
+            overflow-x: auto;
+        }
+
+        .arch-diagram pre {
+            background: none;
+            border: none;
+            padding: 0;
+            margin: 0;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 0.82rem;
+            line-height: 1.5;
+        }
+
+        .arch-diagram .arch-highlight {
+            color: #3b82f6;
+            font-weight: 600;
+        }
+
+        .arch-diagram .arch-accent {
+            color: #86efac;
+        }
+
+        .arch-diagram .arch-warn {
+            color: #fbbf24;
+        }
+
+        .panel {
+            background: #1a1a2e;
+            border: 1px solid #1e293b;
+            border-radius: 10px;
+            padding: 28px 32px;
+            margin: 2em 0;
+        }
+
+        .panel h3 {
+            margin-top: 0;
+            color: #3b82f6;
+        }
+
+        .panel p:last-child {
+            margin-bottom: 0;
+        }
 
         .cta-box {
-            background: linear-gradient(135deg, #f0f7ff 0%, #fdf6f6 100%);
-            border: 2px solid #cc0000;
-            border-radius: 8px;
-            padding: 28px 32px;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(59, 130, 246, 0.04) 100%);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 12px;
+            padding: 36px 40px;
             margin: 3em 0 2em 0;
         }
 
         .cta-box h3 {
-            color: #cc0000;
+            color: #3b82f6;
             margin-top: 0;
-            margin-bottom: 0.8em;
+            margin-bottom: 1em;
             font-size: 1.5rem;
         }
 
@@ -205,82 +354,117 @@
         }
 
         .cta-box li {
-            margin-bottom: 10px;
-            padding-left: 24px;
+            margin-bottom: 12px;
+            padding-left: 28px;
             position: relative;
+            color: #cbd5e1;
         }
 
         .cta-box li:before {
-            content: "→";
+            content: "\2192";
             position: absolute;
             left: 0;
-            color: #cc0000;
+            color: #3b82f6;
             font-weight: bold;
         }
 
-        .reference-table {
-            margin-top: 3em;
-            padding-top: 2em;
-            border-top: 2px solid #f5f5f5;
+        .decision-list {
+            list-style: none;
+            padding-left: 0;
         }
 
-        .reference-table h3 {
-            margin-top: 0;
+        .decision-list li {
+            padding: 12px 16px 12px 44px;
+            position: relative;
+            background: #0d1117;
+            border: 1px solid #1e293b;
+            border-radius: 6px;
+            margin-bottom: 10px;
         }
 
-        .reference-table table {
-            font-size: 0.88rem;
+        .decision-list li:before {
+            content: "\2717";
+            position: absolute;
+            left: 16px;
+            top: 12px;
+            color: #ef4444;
+            font-weight: bold;
+            font-size: 1.1rem;
         }
 
-        .reference-table td:first-child {
-            font-weight: 500;
-            width: 30%;
-        }
-
-        .reference-table td:last-child {
-            word-break: break-all;
+        .decision-list li.do-item:before {
+            content: "\2713";
+            color: #22c55e;
         }
 
         footer {
             margin-top: 4em;
-            padding-top: 2em;
-            border-top: 2px solid #f5f5f5;
+            padding: 2em 0 0;
+            border-top: 1px solid #1e293b;
             font-size: 0.95rem;
-            color: #666;
+            color: #64748b;
         }
 
         .footer-attribution {
             margin-bottom: 1.5em;
             font-weight: 500;
+            color: #94a3b8;
         }
 
         .footer-nav {
             display: flex;
-            gap: 20px;
+            gap: 24px;
             flex-wrap: wrap;
         }
 
         .footer-nav a {
-            color: #cc0000;
+            color: #3b82f6;
             font-weight: 600;
         }
 
-        ul, ol {
-            margin-bottom: 1.3em;
-            padding-left: 28px;
+        .toc {
+            background: #1a1a2e;
+            border: 1px solid #1e293b;
+            border-radius: 10px;
+            padding: 24px 32px;
+            margin-bottom: 2.5em;
         }
 
-        li {
-            margin-bottom: 0.5em;
+        .toc h3 {
+            margin-top: 0;
+            margin-bottom: 0.8em;
+            color: #94a3b8;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .toc ol {
+            margin: 0;
+            padding-left: 20px;
+            color: #94a3b8;
+        }
+
+        .toc li {
+            margin-bottom: 6px;
+        }
+
+        .toc a {
+            color: #93c5fd;
+            font-weight: 500;
         }
 
         @media (max-width: 640px) {
-            body {
-                padding: 20px 16px;
+            .hero {
+                padding: 40px 16px 32px;
             }
 
-            h1 {
-                font-size: 2rem;
+            .hero h1 {
+                font-size: 1.9rem;
+            }
+
+            .container {
+                padding: 32px 16px 40px;
             }
 
             h2 {
@@ -291,102 +475,401 @@
                 font-size: 1.2rem;
             }
 
-            .meta-header {
-                padding: 16px 18px;
-            }
-
             pre {
                 padding: 16px;
-                font-size: 0.8rem;
+                font-size: 0.78rem;
+            }
+
+            .math-block {
+                padding: 16px;
+                font-size: 0.82rem;
             }
 
             table {
-                font-size: 0.85rem;
+                font-size: 0.82rem;
             }
 
             th, td {
                 padding: 8px 10px;
             }
+
+            .cta-box {
+                padding: 24px 20px;
+            }
+
+            .panel {
+                padding: 20px 22px;
+            }
+
+            .arch-diagram {
+                padding: 20px 10px;
+            }
+
+            .arch-diagram pre {
+                font-size: 0.68rem;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="meta-header">
-            <p><strong>Publication:</strong> Red Hat Developer blog (<a href="https://developers.redhat.com/blog">developers.redhat.com/blog</a>)</p>
-            <p><strong>Author:</strong> Markell Rawls, Developer Advocate, Red Hat</p>
-            <p><strong>Pre-submission checklist:</strong></p>
-            <ul class="checklist">
-                <li>[x] Technical accuracy verified with benchmark data</li>
-                <li>[x] All links tested and functional</li>
-                <li>[x] Code examples validated</li>
-                <li>[x] Mobile responsive design</li>
-                <li>[x] Accessibility standards met</li>
-            </ul>
+    <div class="hero">
+        <div class="hero-inner">
+            <div class="hero-badge">llm-d Deep Dive</div>
+            <h1>Disaggregated Prefill and Decode in llm-d: A Deep Technical Guide</h1>
+            <p class="subtitle">Why separating LLM inference phases unlocks 19.8x TTFT improvements, how KV cache transfer actually works at the hardware level, and when you should (and should not) disaggregate.</p>
+            <p class="byline">By <strong>Markell Rawls</strong></p>
         </div>
+    </div>
 
-        <h1>Deploying llm-d with Disaggregated Prefill and Decode: Separate the Phases, Double the Throughput</h1>
+    <div class="container">
 
-        <p class="byline">By Markell Rawls, Developer Advocate, Red Hat</p>
-
-        <p>Large language model inference is a tale of two phases. First comes prefill, where the model processes your entire input prompt in parallel, crunching through thousands of tokens simultaneously. Then comes decode, where the model generates its response one token at a time, methodically reading from memory to produce each word. These phases have fundamentally different computational profiles. Prefill is compute-bound, saturating the GPU's arithmetic units with massive matrix multiplications. Decode is memory-bandwidth-bound, spending most of its time waiting for data to arrive from GPU memory rather than actually computing. When both phases run on the same GPU, they interfere with each other, and neither runs optimally.</p>
-
-        <p>This is where <a href="https://llm-d.ai">llm-d</a> comes in. As a CNCF Sandbox project, llm-d enables disaggregated prefill and decode, running each phase on dedicated hardware optimized for that specific workload. Built on top of vLLM and designed to run on OpenShift and Kubernetes, llm-d gives you production-ready infrastructure for deploying LLMs at scale. In this post, we'll walk through deploying Llama 3.3 70B with disaggregated prefill and decode, showing you the performance characteristics, deployment configuration, and real-world benchmark data.</p>
+        <div class="toc">
+            <h3>Contents</h3>
+            <ol>
+                <li><a href="#introduction">Introduction: Why Disaggregation Matters at Scale</a></li>
+                <li><a href="#math">The Math: Compute-Bound vs. Memory-Bandwidth-Bound</a></li>
+                <li><a href="#kv-transfer">KV Cache Transfer Mechanisms: NIXL, TCP, RDMA, and RoCE</a></li>
+                <li><a href="#pd-sidecar">The pd-sidecar Architecture</a></li>
+                <li><a href="#benchmarks">Real Benchmark Analysis on H200 GPUs</a></li>
+                <li><a href="#when-not-to">Production Considerations: When NOT to Disaggregate</a></li>
+                <li><a href="#yaml-config">LLMInferenceService YAML Configuration</a></li>
+                <li><a href="#whats-next">What's Next</a></li>
+            </ol>
+        </div>
 
         <div class="callout">
-            <p>For an interactive visualization of these concepts with real benchmark data, see our <a href="../index.html">companion explainer</a>.</p>
+            <p>For an interactive visualization of these concepts with real benchmark data, see our <a href="../index.html">companion web app</a>.</p>
         </div>
 
-        <h2>Understanding the Two Phases</h2>
+        <!-- ============================================================ -->
+        <!-- SECTION 1: INTRODUCTION -->
+        <!-- ============================================================ -->
 
-        <p>Let's break down what actually happens during prefill and decode, because understanding the mechanics is key to understanding why disaggregation works.</p>
+        <h2 id="introduction">1. Introduction: Why Disaggregation Matters at Scale</h2>
 
-        <p><strong>Prefill</strong> takes the entire input prompt and processes all tokens simultaneously through the transformer layers. This is a large matrix multiplication that fully utilizes GPU compute cores. For a 1,000-token prompt on Llama 3.3 70B, this means processing all 1,000 tokens through 80 transformer layers in parallel. The GPU's tensor cores are running at full speed, performing trillions of floating-point operations per second. This phase is FLOPS-bound—the limiting factor is how fast the GPU can multiply matrices, not how fast it can read from memory.</p>
+        <p>Large language model inference is fundamentally a two-phase process. The first phase, <strong>prefill</strong>, processes the entire input prompt in a single forward pass, computing attention keys and values for every token through every transformer layer. The second phase, <strong>decode</strong>, generates the response one token at a time, autoregressively feeding each new token back through the model to produce the next. These two phases have radically different computational profiles, and when you force them to share the same GPU, neither runs optimally.</p>
 
-        <p><strong>Decode</strong> generates output tokens one at a time. Each new token requires reading the entire KV cache (the attention keys and values from all previous tokens) from GPU memory. This is memory-bandwidth-bound. The GPU cores are mostly idle, waiting for data to arrive from HBM (High Bandwidth Memory). Even on H200 GPUs with 4.8 TB/s of memory bandwidth, this is still the bottleneck. The compute units could process the data much faster than the memory subsystem can deliver it.</p>
+        <p>At low concurrency, the interference is minor. A single request prefills, then decodes, and the GPU switches between compute-bound and memory-bandwidth-bound work sequentially. But at scale, with dozens or hundreds of concurrent requests, the problem compounds. A GPU that is in the middle of a large prefill operation for one request is simultaneously trying to serve decode iterations for other requests in the same batch. The prefill saturates the compute units while decode starves for memory bandwidth. The decode operations consume memory bandwidth that could be feeding data to the prefill. Both phases degrade, and the result is higher tail latencies, lower throughput, and unpredictable time-to-first-token (TTFT).</p>
 
-        <p><strong>The interference problem:</strong> When a GPU is doing prefill for one request and decode for another, the prefill computation saturates the compute units while decode needs memory bandwidth. But they share the same physical GPU resources. The prefill work queues up compute operations that block the decode's memory reads. The decode work consumes memory bandwidth that could be used to feed data to the prefill operations. Neither phase runs optimally, and you get worse performance than if you ran them sequentially.</p>
+        <p>This is the core insight behind disaggregated prefill and decode: <strong>if two workloads have fundamentally different hardware requirements, run them on different hardware</strong>. Dedicate some GPUs to prefill (where they can keep their compute units saturated with large matrix multiplications) and other GPUs to decode (where they can optimize batch sizes and memory access patterns for bandwidth-bound work). The challenge, of course, is the handoff: after prefill completes, the KV cache (which can be gigabytes for long contexts) must be transferred from the prefill GPU to the decode GPU before token generation can begin.</p>
 
-        <h2>Our Test Environment</h2>
+        <p><a href="https://llm-d.ai">llm-d</a>, a CNCF Sandbox project, solves this with a production-ready infrastructure layer built on vLLM, Kubernetes, and Red Hat OpenShift AI. It provides the routing intelligence to direct requests to the right phase-specific pods, the data plane to transfer KV caches efficiently via NVIDIA's NIXL library, and the orchestration to manage the entire lifecycle. In this post, we will go deep on the math, the architecture, the transfer mechanisms, and the real benchmark data from running Llama 3.3 70B Instruct FP8 dynamic on NVIDIA H200 GPUs.</p>
 
-        <p>All benchmark data in this post comes from a production-representative environment running on Red Hat OpenShift AI. Here are the exact specifications:</p>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 2: THE MATH -->
+        <!-- ============================================================ -->
+
+        <h2 id="math">2. The Math: Why Prefill is Compute-Bound and Decode is Memory-Bandwidth-Bound</h2>
+
+        <p>To understand why disaggregation works, you need to understand arithmetic intensity: the ratio of compute operations (FLOPs) to memory operations (bytes transferred). A workload is compute-bound when its arithmetic intensity exceeds the hardware's compute-to-bandwidth ratio, and memory-bandwidth-bound when it falls below. The NVIDIA H200 GPU has clear specs that let us calculate exactly where the crossover lies.</p>
+
+        <h3>H200 Hardware Profile</h3>
 
         <table>
             <tr>
-                <th>Component</th>
-                <th>Specification</th>
+                <th>Spec</th>
+                <th>Value</th>
             </tr>
             <tr>
-                <td>Model</td>
-                <td><a href="https://huggingface.co/neuralmagic/Llama-3.3-70B-Instruct-FP8-dynamic">Llama 3.3 70B Instruct FP8 dynamic</a></td>
+                <td>FP8 Tensor Core Performance</td>
+                <td>3,958 TFLOPS</td>
             </tr>
             <tr>
-                <td>Hardware</td>
-                <td>NVIDIA H200 GPUs (141GB HBM3e, 4.8 TB/s bandwidth)</td>
+                <td>HBM3e Capacity</td>
+                <td>141 GB</td>
             </tr>
             <tr>
-                <td>Inference Engine</td>
-                <td>vLLM v0.7.3 with llm-d routing</td>
+                <td>HBM3e Bandwidth</td>
+                <td>4.8 TB/s</td>
             </tr>
             <tr>
-                <td>Platform</td>
-                <td>Red Hat OpenShift AI on Kubernetes</td>
-            </tr>
-            <tr>
-                <td>Measurement</td>
-                <td>Time-to-first-token (TTFT) via Python <code>time.perf_counter()</code></td>
-            </tr>
-            <tr>
-                <td>Routing</td>
-                <td>Round-robin (baseline) vs. prefix-aware cache routing</td>
+                <td>Compute-to-Bandwidth Ratio</td>
+                <td class="highlight">~824 FLOPs/byte</td>
             </tr>
         </table>
 
-        <h2>Baseline Performance: Why Caching Matters</h2>
+        <p>The compute-to-bandwidth ratio of <strong>~824 FLOPs/byte</strong> is the critical number. Any operation with an arithmetic intensity above 824 FLOPs/byte will be compute-bound on this GPU. Any operation below 824 FLOPs/byte will be memory-bandwidth-bound. Let us see where prefill and decode fall.</p>
 
-        <p>Before we talk about disaggregation, we need to understand KV cache reuse, because it's the foundation that makes everything else possible. When you process a prompt, the model computes attention keys and values for every token at every layer. These KV values are stored in the cache. If another request comes in with the same prompt prefix, you can reuse those cached KV values instead of recomputing them. This saves all the prefill work for those tokens.</p>
+        <h3>Prefill: Large GEMMs, High Arithmetic Intensity</h3>
 
-        <p>Here's what KV cache reuse looks like in practice, measured as time-to-first-token at different context lengths:</p>
+        <p>During prefill, the model processes <em>n</em> input tokens simultaneously. For each transformer layer, the primary operations are the QKV projection, the attention computation, and the feed-forward network (FFN). Consider just the QKV projection for a model with hidden dimension <em>d</em> = 8,192 (Llama 3.3 70B):</p>
+
+        <div class="math-block">
+            <span class="math-label">QKV Projection (one layer):</span>
+            FLOPs  = 2 * n * d * 3d = 6 * n * d<sup>2</sup>
+            <span class="math-dim">(factor of 2 for multiply-accumulate, 3d for Q, K, V projections)</span>
+
+            <span class="math-label">For n = 32,000 tokens, d = 8,192:</span>
+            FLOPs  = 6 * 32,000 * 8,192<sup>2</sup> = <span class="math-result">12.88 TFLOP</span> <span class="math-dim">(per layer, QKV only)</span>
+
+            <span class="math-label">Weight data read:</span>
+            Bytes  = 3 * d * d * 1 byte (FP8) = 3 * 8,192<sup>2</sup> = <span class="math-result">201 MB</span>
+
+            <span class="math-label">Arithmetic Intensity (QKV projection):</span>
+            AI     = 12.88 * 10<sup>12</sup> / (201 * 10<sup>6</sup>) = <span class="math-result">~64,000 FLOPs/byte</span>
+        </div>
+
+        <p>An arithmetic intensity of ~64,000 FLOPs/byte is <strong>77x higher</strong> than the H200's compute-to-bandwidth ratio of 824. This operation is deeply compute-bound. The GPU's compute units are the bottleneck, not memory bandwidth. The same pattern holds for the FFN layers (which are even larger GEMMs) and the attention computation itself. Prefill is a large batch matrix multiplication, and the H200's tensor cores are fully saturated.</p>
+
+        <p>The total FLOPs for prefill scale as <strong>O(n * d<sup>2</sup> * L)</strong> where <em>L</em> is the number of layers (80 for Llama 70B), plus the O(n<sup>2</sup> * d) attention computation. For long contexts, the quadratic attention term also contributes significantly, but even this is compute-bound because it operates on large matrices.</p>
+
+        <h3>Decode: Single-Token, Low Arithmetic Intensity</h3>
+
+        <p>During decode, we generate one token at a time. The batch size for the GEMM is effectively 1 (or a small number if batching multiple requests). Consider the same QKV projection, but now with <em>n</em> = 1:</p>
+
+        <div class="math-block">
+            <span class="math-label">QKV Projection (one layer, one token):</span>
+            FLOPs  = 6 * 1 * 8,192<sup>2</sup> = <span class="math-result">402 MFLOP</span>
+
+            <span class="math-label">Weight data read:</span>
+            Bytes  = 3 * 8,192<sup>2</sup> * 1 byte (FP8) = <span class="math-result">201 MB</span> <span class="math-dim">(same weights, still must be read)</span>
+
+            <span class="math-label">Arithmetic Intensity (decode QKV):</span>
+            AI     = 402 * 10<sup>6</sup> / (201 * 10<sup>6</sup>) = <span class="math-result">~2 FLOPs/byte</span>
+        </div>
+
+        <p>An arithmetic intensity of ~2 FLOPs/byte is <strong>412x lower</strong> than the H200's compute-to-bandwidth ratio. This operation is profoundly memory-bandwidth-bound. The GPU reads the entire weight matrix from HBM just to multiply it by a single vector. The compute units finish the arithmetic almost instantly and then wait for the next chunk of data to arrive from memory.</p>
+
+        <p>There is an additional memory cost during decode: reading the KV cache. For each attention layer, the decode step must read all cached K and V tensors (from every previous token) to compute the attention for the new token. For a context of 32,000 tokens with head dimension 128 and 80 layers, the KV cache read alone is:</p>
+
+        <div class="math-block">
+            <span class="math-label">KV Cache Read (all layers, 32K context, GQA with 8 KV heads):</span>
+            Bytes  = 2 * 80 * 8 * 32,000 * 128 * 1 byte (FP8) = <span class="math-result">~5.2 GB</span> <span class="math-dim">per decode step</span>
+
+            <span class="math-label">Attention FLOPs for this read:</span>
+            FLOPs  = 2 * 80 * 8 * 32,000 * 128 = <span class="math-result">~5.2 GFLOP</span>
+
+            <span class="math-label">Arithmetic Intensity (attention):</span>
+            AI     = 5.2 * 10<sup>9</sup> / (5.2 * 10<sup>9</sup>) = <span class="math-result">~1 FLOP/byte</span>
+        </div>
+
+        <p>The attention computation during decode has an arithmetic intensity of roughly 1 FLOP/byte, making it extremely memory-bandwidth-bound. Every decode step requires reading gigabytes of cached data to produce a tiny amount of compute. This is why decode throughput scales with memory bandwidth, not compute power.</p>
+
+        <blockquote>
+            <p>Prefill arithmetic intensity: ~64,000 FLOPs/byte (77x above the H200's roofline). Decode arithmetic intensity: ~1-2 FLOPs/byte (400x below the roofline). These two workloads have no business sharing the same GPU at the same time.</p>
+        </blockquote>
+
+
+        <!-- ============================================================ -->
+        <!-- SECTION 3: KV CACHE TRANSFER -->
+        <!-- ============================================================ -->
+
+        <h2 id="kv-transfer">3. KV Cache Transfer Mechanisms: NIXL vs TCP vs RDMA/RoCE</h2>
+
+        <p>Disaggregation introduces a new cost: after prefill completes on one GPU, the KV cache must be transferred to a different GPU for decode. For Llama 3.3 70B at 32K context length, the KV cache is approximately <strong>2 GB per request</strong> (with FP8 quantized KV cache and GQA). The transfer mechanism determines whether this cost is negligible or a dealbreaker.</p>
+
+        <h3>TCP: The Baseline</h3>
+
+        <p>Standard TCP/IP networking is the most universally available option. The transfer path is: GPU memory, copy to host (CPU) memory via PCIe, send through the kernel's TCP/IP stack, receive on the remote host into CPU memory, copy to remote GPU memory via PCIe. Every step involves the CPU and the operating system kernel.</p>
+
+        <ul>
+            <li><strong>Latency:</strong> ~100 us+ per small transfer, dominated by kernel overhead and context switches</li>
+            <li><strong>Throughput:</strong> Limited by PCIe bandwidth and kernel processing; typically 10-25 GB/s on 100 GbE</li>
+            <li><strong>CPU overhead:</strong> High. The CPU handles all protocol processing, buffer management, and memory copies</li>
+            <li><strong>Infrastructure:</strong> Works on any network. No special hardware or configuration required</li>
+        </ul>
+
+        <h3>RDMA over InfiniBand</h3>
+
+        <p>RDMA (Remote Direct Memory Access) over InfiniBand bypasses both the CPU and the OS kernel entirely. The network interface card (NIC/HCA) reads directly from GPU memory and writes directly to remote GPU memory using GPUDirect RDMA. There is no host memory copy, no kernel involvement, and no CPU processing of data.</p>
+
+        <ul>
+            <li><strong>Latency:</strong> ~1-2 us for small transfers (50-100x lower than TCP)</li>
+            <li><strong>Throughput:</strong> 100-400 GB/s depending on InfiniBand generation (NDR: 400 Gb/s per port, multi-rail configurations go higher)</li>
+            <li><strong>CPU overhead:</strong> Near zero. The HCA handles all protocol processing in hardware</li>
+            <li><strong>Infrastructure:</strong> Requires InfiniBand fabric (switches, HCAs, cabling). Significant capital investment</li>
+        </ul>
+
+        <h3>RoCE: RDMA over Converged Ethernet</h3>
+
+        <p>RoCE (RDMA over Converged Ethernet) brings RDMA semantics to standard Ethernet infrastructure. RoCEv2 runs over UDP/IP, enabling routing across L3 networks. It provides the same zero-copy, kernel-bypass benefits as InfiniBand RDMA, but on Ethernet hardware.</p>
+
+        <ul>
+            <li><strong>Latency:</strong> ~5-10 us (slightly higher than InfiniBand due to Ethernet framing and potential congestion)</li>
+            <li><strong>Throughput:</strong> 50-100 GB/s on 400 GbE, scalable with link aggregation</li>
+            <li><strong>CPU overhead:</strong> Near zero (same RDMA verbs API as InfiniBand)</li>
+            <li><strong>Infrastructure:</strong> Requires lossless Ethernet with Priority Flow Control (PFC) and ECN (Explicit Congestion Notification). Standard Ethernet switches with DCBX support are sufficient, but must be configured for lossless operation</li>
+        </ul>
+
+        <h3>NIXL: NVIDIA's Inference Transfer Library</h3>
+
+        <p>NIXL (NVIDIA Inference Xfer Library) is NVIDIA's purpose-built library for transferring inference state between GPUs. Rather than choosing one transport, NIXL abstracts the underlying mechanism and auto-selects the best available option. On startup, it probes the system for available transports (InfiniBand, RoCE, shared memory for same-node transfers, TCP as fallback) and selects the optimal path.</p>
+
+        <p>Key capabilities of NIXL:</p>
+
+        <ul>
+            <li><strong>GPU memory registration:</strong> Pre-registers GPU memory regions with the transport layer at startup, avoiding per-transfer registration overhead</li>
+            <li><strong>Zero-copy transfers:</strong> When RDMA is available, data moves directly from GPU to GPU without staging through host memory</li>
+            <li><strong>Multi-transport support:</strong> Can use different transports simultaneously (e.g., shared memory for same-node, RDMA for cross-node)</li>
+            <li><strong>Chunked transfers:</strong> Breaks large KV caches into chunks that can be pipelined and transferred in parallel across multiple network links</li>
+            <li><strong>Metadata exchange:</strong> Handles the coordination protocol for cache layout, tensor shapes, and sequence information</li>
+        </ul>
+
+        <h3>Comparison Table</h3>
+
+        <table>
+            <tr>
+                <th>Property</th>
+                <th>TCP</th>
+                <th>RDMA (InfiniBand)</th>
+                <th>RoCE</th>
+                <th>NIXL (auto)</th>
+            </tr>
+            <tr>
+                <td><strong>Latency</strong></td>
+                <td>~100+ us</td>
+                <td>~1-2 us</td>
+                <td>~5-10 us</td>
+                <td>Best available</td>
+            </tr>
+            <tr>
+                <td><strong>Throughput</strong></td>
+                <td>10-25 GB/s</td>
+                <td>100-400 GB/s</td>
+                <td>50-100 GB/s</td>
+                <td>Best available</td>
+            </tr>
+            <tr>
+                <td><strong>CPU Overhead</strong></td>
+                <td>High</td>
+                <td>Near zero</td>
+                <td>Near zero</td>
+                <td>Near zero (RDMA paths)</td>
+            </tr>
+            <tr>
+                <td><strong>Kernel Bypass</strong></td>
+                <td>No</td>
+                <td>Yes</td>
+                <td>Yes</td>
+                <td>Yes (RDMA paths)</td>
+            </tr>
+            <tr>
+                <td><strong>GPU Direct</strong></td>
+                <td>No</td>
+                <td>Yes (GPUDirect)</td>
+                <td>Yes (GPUDirect)</td>
+                <td>Yes (when available)</td>
+            </tr>
+            <tr>
+                <td><strong>Infrastructure</strong></td>
+                <td>Any network</td>
+                <td>InfiniBand fabric</td>
+                <td>Lossless Ethernet (PFC/ECN)</td>
+                <td>Adapts to available</td>
+            </tr>
+            <tr>
+                <td><strong>Best For</strong></td>
+                <td>Dev/test</td>
+                <td>Production (HPC clusters)</td>
+                <td>Production (Ethernet DC)</td>
+                <td>All environments</td>
+            </tr>
+        </table>
+
+        <div class="callout">
+            <p><strong>Practical guidance:</strong> Use TCP for development and testing where network infrastructure is not a concern. Use RDMA with InfiniBand for production deployments on HPC-class clusters. Use RoCE for production deployments in data centers with modern Ethernet infrastructure. Use NIXL as the default in llm-d -- it will auto-select the best transport and handle the complexity for you.</p>
+        </div>
+
+
+        <!-- ============================================================ -->
+        <!-- SECTION 4: PD-SIDECAR -->
+        <!-- ============================================================ -->
+
+        <h2 id="pd-sidecar">4. The pd-sidecar Architecture</h2>
+
+        <p>The pd-sidecar is the component that makes disaggregated prefill/decode possible at the pod level. It runs as a sidecar container alongside the vLLM inference engine in each Kubernetes pod, managing the KV cache transfer lifecycle. Every prefill pod and every decode pod runs its own pd-sidecar instance.</p>
+
+        <h3>Startup Sequence</h3>
+
+        <ol>
+            <li><strong>GPU memory registration:</strong> On pod startup, the pd-sidecar uses NIXL to register the vLLM engine's GPU memory regions (specifically the KV cache buffer) with the transport layer. For RDMA transports, this involves pinning the memory and registering it with the HCA so it can be accessed remotely without CPU involvement.</li>
+            <li><strong>Transport discovery:</strong> NIXL probes for available transports (InfiniBand verbs, RoCE, shared memory, TCP) and establishes connections to pd-sidecar instances on other pods in the deployment.</li>
+            <li><strong>Metadata service registration:</strong> The pd-sidecar registers itself with the llm-d routing layer, advertising its role (prefill or decode), available GPU memory, current load, and network endpoints.</li>
+            <li><strong>Health check initialization:</strong> Begins periodic health reporting to the routing layer, including GPU utilization, memory pressure, and transfer queue depth.</li>
+        </ol>
+
+        <h3>Request Lifecycle</h3>
+
+        <p>Here is how a request flows through the disaggregated architecture, step by step:</p>
+
+        <ol>
+            <li>A client sends a completion request to the llm-d gateway.</li>
+            <li>The <strong>router</strong> inspects the request and routes it to a prefill pod based on load balancing policy (least-load, prefix-affinity, etc.).</li>
+            <li>The <strong>prefill pod's vLLM engine</strong> runs the full forward pass, computing attention keys and values for all input tokens across all 80 layers. The KV cache is stored in GPU memory.</li>
+            <li>vLLM signals completion to the <strong>prefill pod's pd-sidecar</strong>, providing metadata: cache block layout, tensor shapes, sequence length, and data types.</li>
+            <li>The pd-sidecar coordinates with the router to select a <strong>decode pod</strong>. The selection considers current load, available KV cache slots, and network topology (prefer same-rack or same-switch transfers).</li>
+            <li>The pd-sidecar initiates a <strong>KV cache transfer via NIXL</strong>. With RDMA, this is a zero-copy GPU-to-GPU DMA operation. The prefill GPU's memory is read directly by the network adapter and written directly into the decode GPU's pre-registered KV cache buffer.</li>
+            <li>Once the transfer completes, the pd-sidecar sends metadata to the <strong>decode pod's pd-sidecar</strong>, which injects the cache into the decode engine's scheduler so it can begin generating tokens.</li>
+            <li>The <strong>decode pod's vLLM engine</strong> begins autoregressive token generation, streaming tokens back to the client.</li>
+        </ol>
+
+        <h3>Architecture Diagram</h3>
+
+        <div class="arch-diagram">
+            <pre>
+                         <span class="arch-highlight">llm-d Disaggregated Prefill/Decode Architecture</span>
+
+    <span class="arch-accent">Client Request</span>
+          |
+          v
+  +----------------+
+  |   <span class="arch-highlight">llm-d Router</span>  |  prefix-aware routing, load balancing
+  +----------------+
+     |           |
+     v           v
++-----------+  +-----------+
+| <span class="arch-accent">Prefill</span>   |  | <span class="arch-accent">Prefill</span>   |   Compute-optimized pods
+| <span class="arch-accent">Pod 1</span>     |  | <span class="arch-accent">Pod 2</span>     |   (high GPU utilization)
+|           |  |           |
+| +-------+ |  | +-------+ |
+| | vLLM  | |  | | vLLM  | |
+| +-------+ |  | +-------+ |
+| |<span class="arch-warn">sidecar</span>| |  | |<span class="arch-warn">sidecar</span>| |   NIXL GPU memory registration
+| +-------+ |  | +-------+ |
++-----------+  +-----------+
+     |                |
+     |  <span class="arch-warn">KV Cache Transfer (NIXL: RDMA / RoCE / TCP)</span>
+     |                |
+     v                v
++-----------+  +-----------+
+| <span class="arch-highlight">Decode</span>    |  | <span class="arch-highlight">Decode</span>    |   Bandwidth-optimized pods
+| <span class="arch-highlight">Pod 1</span>     |  | <span class="arch-highlight">Pod 2</span>     |   (large decode batches)
+|           |  |           |
+| +-------+ |  | +-------+ |
+| | vLLM  | |  | | vLLM  | |
+| +-------+ |  | +-------+ |
+| |<span class="arch-warn">sidecar</span>| |  | |<span class="arch-warn">sidecar</span>| |   Receives cache, starts decode
+| +-------+ |  | +-------+ |
++-----------+  +-----------+
+     |                |
+     v                v
+         <span class="arch-accent">Streamed Token Response</span>
+            </pre>
+        </div>
+
+        <h3>Metrics and Observability</h3>
+
+        <p>The pd-sidecar exposes Prometheus metrics for monitoring the disaggregated pipeline:</p>
+
+        <ul>
+            <li><code>pd_kv_transfer_duration_seconds</code> -- histogram of KV cache transfer times, labeled by transport type and context length</li>
+            <li><code>pd_kv_transfer_bytes_total</code> -- counter of total bytes transferred</li>
+            <li><code>pd_prefill_queue_depth</code> -- current number of requests waiting for prefill</li>
+            <li><code>pd_decode_slots_available</code> -- number of KV cache slots available on the decode pod</li>
+            <li><code>pd_sidecar_health</code> -- gauge indicating sidecar health status (1 = healthy, 0 = degraded)</li>
+        </ul>
+
+
+        <!-- ============================================================ -->
+        <!-- SECTION 5: BENCHMARKS -->
+        <!-- ============================================================ -->
+
+        <h2 id="benchmarks">5. Real Benchmark Analysis on H200 GPUs</h2>
+
+        <p>All benchmark data comes from a production-representative deployment on Red Hat OpenShift AI, using vLLM v0.7.3 with llm-d routing. The model is Llama 3.3 70B Instruct FP8 dynamic, running on NVIDIA H200 GPUs (141 GB HBM3e, 4.8 TB/s bandwidth). TTFT was measured via Python <code>time.perf_counter()</code> with sub-millisecond precision.</p>
+
+        <h3>TTFT Across Context Lengths</h3>
 
         <table>
             <tr>
@@ -399,78 +882,157 @@
                 <td>500 tokens</td>
                 <td>0.65s</td>
                 <td>0.16s</td>
-                <td>4.0x</td>
+                <td class="highlight">4.0x</td>
             </tr>
             <tr>
                 <td>1,000 tokens</td>
                 <td>0.24s</td>
                 <td>0.16s</td>
-                <td>1.5x</td>
+                <td class="highlight">1.5x</td>
             </tr>
             <tr>
                 <td>4,000 tokens</td>
                 <td>0.45s</td>
                 <td>0.16s</td>
-                <td>2.8x</td>
+                <td class="highlight">2.8x</td>
             </tr>
             <tr>
                 <td>8,000 tokens</td>
                 <td>0.93s</td>
                 <td>0.25s</td>
-                <td>3.8x</td>
+                <td class="highlight">3.8x</td>
             </tr>
             <tr>
                 <td>16,000 tokens</td>
                 <td>1.90s</td>
                 <td>0.19s</td>
-                <td>10.0x</td>
+                <td class="highlight">10.0x</td>
             </tr>
             <tr>
                 <td>32,000 tokens</td>
                 <td>4.74s</td>
                 <td>0.24s</td>
-                <td>19.8x</td>
+                <td class="highlight">19.8x</td>
             </tr>
         </table>
 
-        <blockquote>
-            <p>At 32,000 tokens, cached inference delivers TTFT in 0.24 seconds—a 19.8x improvement over cold inference at 4.74 seconds. The longer the context, the more caching matters.</p>
-        </blockquote>
+        <h4>Analysis: The Scaling Curve</h4>
 
-        <p>But caching only helps if requests actually hit the same pod that has the cache. With naive round-robin routing, requests land on random pods, and each pod builds its KV cache from scratch. Cache reuse drops to 0.6-1.0x—effectively no benefit. This is where intelligent routing comes in, and why disaggregation needs to be paired with cache-aware routing.</p>
+        <p>Cold TTFT grows roughly linearly with context length (doubling from 16K to 32K: 1.90s to 4.74s, a 2.5x increase). This is expected: prefill is dominated by the O(n * d<sup>2</sup>) GEMM operations, which scale linearly with token count. The slight super-linearity at long contexts reflects the O(n<sup>2</sup>) attention computation becoming a larger fraction of total work.</p>
 
-        <p>As you scale concurrency, throughput increases linearly until you saturate the GPU's memory bandwidth:</p>
+        <p>The anomalous 500-token cold TTFT (0.65s, higher than 1K at 0.24s) is characteristic of cold-start overhead: model loading, CUDA kernel compilation, and memory allocation that are amortized over larger batches. At 500 tokens, the fixed overhead dominates the actual compute.</p>
+
+        <h4>Analysis: Why Cached TTFT Stays Flat</h4>
+
+        <p>Cached TTFT stays remarkably stable between 0.16s and 0.25s regardless of context length. This is because a cache hit eliminates the entire prefill phase. The remaining latency (~0.16-0.25s) represents:</p>
+
+        <ul>
+            <li><strong>Cache lookup and validation:</strong> Verifying the cached KV tensors match the request's prompt prefix (~10-30 ms)</li>
+            <li><strong>First decode step:</strong> Generating the first output token, which requires reading the cached KV values (~50-100 ms for 32K context)</li>
+            <li><strong>Scheduling and routing overhead:</strong> Request queuing, pod selection, and API response formatting (~20-50 ms)</li>
+        </ul>
+
+        <p>The slight increase at 8K (0.25s) reflects the larger KV cache read during the first decode step. But even at 32K, the cached TTFT is only 0.24s because the cache is already resident in GPU memory and the decode step's memory read is pipelined efficiently.</p>
+
+        <h4>What 19.8x at 32K Means in Production</h4>
+
+        <p>A 19.8x TTFT improvement at 32K tokens translates cold inference from 4.74 seconds to 0.24 seconds. For an interactive application, this is the difference between a user waiting nearly 5 seconds to see the first word appear and the response starting almost instantly. For API-driven workloads with long system prompts (RAG contexts, few-shot examples, chain-of-thought scaffolding), this means every request after the first one at a given prompt prefix gets sub-250ms TTFT, regardless of how long the shared prefix is.</p>
+
+        <h3>Throughput Scaling</h3>
 
         <table>
             <tr>
                 <th>Concurrent Requests</th>
-                <th>Throughput (tokens/s)</th>
+                <th>Throughput (tok/s)</th>
+                <th>Per-Request (tok/s)</th>
+                <th>Scaling Efficiency</th>
             </tr>
             <tr>
                 <td>1</td>
                 <td>45.5</td>
+                <td>45.5</td>
+                <td class="highlight">baseline</td>
             </tr>
             <tr>
                 <td>5</td>
                 <td>175.3</td>
+                <td>35.1</td>
+                <td class="highlight">77%</td>
             </tr>
             <tr>
                 <td>10</td>
                 <td>359.8</td>
+                <td>36.0</td>
+                <td class="highlight">79%</td>
             </tr>
             <tr>
                 <td>50</td>
                 <td>1,483.4</td>
+                <td>29.7</td>
+                <td class="highlight">65%</td>
             </tr>
         </table>
 
-        <h2>Deploying Disaggregated Prefill and Decode</h2>
+        <h4>Analysis: Sub-Linear Throughput Scaling</h4>
 
-        <p>Now let's look at how to actually deploy this. The llm-d API makes it straightforward. You start with a standard LLMInferenceService (replicas running both prefill and decode), then add dedicated prefill workers, enable KV cache transfer, and configure disaggregated routing.</p>
+        <p>Total throughput increases 32.6x from 1 to 50 concurrent requests, but per-request throughput drops from 45.5 to 29.7 tok/s. This sub-linear scaling (65% efficiency at 50 requests) is expected and stems from several factors:</p>
 
-        <p>Here's the complete configuration for Llama 3.3 70B with disaggregated prefill and decode:</p>
+        <ul>
+            <li><strong>Memory bandwidth saturation:</strong> Decode is memory-bandwidth-bound. At 50 concurrent requests, each decode step must read 50 sets of KV caches, competing for the same 4.8 TB/s of HBM bandwidth</li>
+            <li><strong>Scheduler overhead:</strong> The vLLM continuous batching scheduler has O(n) overhead per scheduling iteration, where n is the number of active sequences</li>
+            <li><strong>GPU memory pressure:</strong> More concurrent requests mean more KV cache memory allocated, reducing the available memory for batch processing optimizations</li>
+            <li><strong>Attention computation:</strong> With grouped-query attention, the attention computation for each sequence is independent, but the memory reads compete for bandwidth</li>
+        </ul>
 
-        <pre><code><span class="yaml-key">apiVersion:</span> <span class="yaml-string">inference.llm-d.ai/v1alpha1</span>
+        <p>Notably, throughput scales well from 1 to 10 requests (79% efficiency), suggesting the H200's bandwidth is not yet saturated at this batch size. The drop to 65% at 50 requests indicates we are approaching the memory bandwidth ceiling. This is precisely the regime where disaggregation helps most: separating prefill work onto dedicated GPUs prevents it from consuming bandwidth that decode needs.</p>
+
+
+        <!-- ============================================================ -->
+        <!-- SECTION 6: WHEN NOT TO -->
+        <!-- ============================================================ -->
+
+        <h2 id="when-not-to">6. Production Considerations: When NOT to Disaggregate</h2>
+
+        <p>Disaggregated prefill/decode is not universally beneficial. There are clear scenarios where the complexity and overhead outweigh the gains. Being honest about these trade-offs is essential for making good architectural decisions.</p>
+
+        <h3>Do Not Disaggregate When:</h3>
+
+        <ul class="decision-list">
+            <li><strong>Small models (less than 13B parameters):</strong> Prefill on small models completes in single-digit milliseconds, even for long contexts. The KV cache transfer latency (even 1-2 ms over RDMA) becomes a significant fraction of the total prefill time, negating the benefit of separation.</li>
+            <li><strong>Low concurrency (fewer than 5 simultaneous requests):</strong> The core problem disaggregation solves is interference between prefill and decode when they share a GPU. At low concurrency, there is minimal interference because the GPU can handle both phases sequentially without contention. The added complexity of transfer and routing is not justified.</li>
+            <li><strong>Short contexts (less than 1K tokens):</strong> At 1K tokens, cold TTFT is only 0.24s on the H200. The KV cache for 1K tokens is roughly 60 MB -- small enough to transfer quickly, but the prefill time is already fast enough that separation provides marginal benefit (our data shows only 1.5x improvement at 1K).</li>
+            <li><strong>Limited network bandwidth:</strong> The KV cache for Llama 3.3 70B at 32K context is approximately 2 GB per request. If your inter-node network is 25 GbE (~3 GB/s), transferring one KV cache takes ~700 ms -- longer than the prefill itself. You need at least 100 GbE, and ideally RDMA, for disaggregation to be practical.</li>
+            <li><strong>Tight memory budgets:</strong> Disaggregation requires the model weights to be loaded on both prefill and decode pods. For a 70B FP8 model, that is ~70 GB per pod type. If you are already at the edge of GPU memory capacity, duplicating the model may not be feasible without reducing batch sizes or maximum context length.</li>
+        </ul>
+
+        <h3>Decision Framework</h3>
+
+        <div class="panel">
+            <h3>Should You Disaggregate? Calculate Your Ratio</h3>
+            <p>Measure your average prefill time and average decode time per request. Compute the <strong>prefill-to-decode time ratio</strong>.</p>
+            <ul>
+                <li><strong>Ratio greater than 3:1</strong> -- Disaggregation likely beneficial. Prefill is consuming significant GPU time that could be used for decode batching.</li>
+                <li><strong>Ratio between 1:1 and 3:1</strong> -- Marginal benefit. Consider only if you have high concurrency (20+ simultaneous requests) and observe TTFT variability.</li>
+                <li><strong>Ratio less than 1:1</strong> -- Do not disaggregate. Decode dominates your workload, and the transfer overhead will increase total latency.</li>
+            </ul>
+            <p>Additionally, calculate your <strong>KV cache transfer time</strong> as: cache size (bytes) / network bandwidth (bytes/s). If this exceeds 10% of your prefill time, you need faster networking before disaggregation makes sense.</p>
+        </div>
+
+
+        <!-- ============================================================ -->
+        <!-- SECTION 7: YAML CONFIG -->
+        <!-- ============================================================ -->
+
+        <h2 id="yaml-config">7. LLMInferenceService YAML Configuration</h2>
+
+        <p>llm-d uses the <code>LLMInferenceService</code> custom resource to configure inference deployments. Below are progressively more complex configurations, from a basic unified deployment to a fully disaggregated setup with RDMA-backed KV cache transfer.</p>
+
+        <h3>7.1 Basic Deployment (Unified Prefill + Decode)</h3>
+
+        <p>This configuration runs both phases on the same pods. Use this as your starting point and baseline for comparison.</p>
+
+        <pre><code><span class="yaml-comment"># Basic unified deployment -- both prefill and decode on same pods</span>
+<span class="yaml-key">apiVersion:</span> <span class="yaml-string">inference.llm-d.ai/v1alpha1</span>
 <span class="yaml-key">kind:</span> <span class="yaml-string">LLMInferenceService</span>
 <span class="yaml-key">metadata:</span>
   <span class="yaml-key">name:</span> <span class="yaml-string">llama-3-3-70b-fp8</span>
@@ -479,123 +1041,148 @@
   <span class="yaml-key">modelArtifact:</span>
     <span class="yaml-key">uri:</span> <span class="yaml-string">"oci://quay.io/llm-d/models:llama-3.3-70b-instruct-fp8-kv-int8"</span>
   <span class="yaml-key">inferenceConfig:</span>
-    <span class="yaml-key">replicas:</span> <span class="yaml-number">2</span>
+    <span class="yaml-key">replicas:</span> <span class="yaml-number">2</span>            <span class="yaml-comment"># 2 pods, each handles both phases</span>
+    <span class="yaml-key">role:</span> <span class="yaml-string">both</span>              <span class="yaml-comment"># unified mode (default)</span>
+    <span class="yaml-key">accelerator:</span>
+      <span class="yaml-key">type:</span> <span class="yaml-string">nvidia.com/gpu</span>
+      <span class="yaml-key">count:</span> <span class="yaml-number">4</span>             <span class="yaml-comment"># 4x H200 per pod (tensor parallel)</span>
+      <span class="yaml-key">product:</span> <span class="yaml-string">H200</span></code></pre>
+
+        <h3>7.2 Adding Dedicated Prefill Workers</h3>
+
+        <p>This adds prefill-specific pods while keeping the base pods in decode-only mode. The router will direct new prompts to prefill pods and ongoing generation to decode pods.</p>
+
+        <pre><code><span class="yaml-comment"># Disaggregated: dedicated prefill and decode pods</span>
+<span class="yaml-key">apiVersion:</span> <span class="yaml-string">inference.llm-d.ai/v1alpha1</span>
+<span class="yaml-key">kind:</span> <span class="yaml-string">LLMInferenceService</span>
+<span class="yaml-key">metadata:</span>
+  <span class="yaml-key">name:</span> <span class="yaml-string">llama-3-3-70b-fp8-disagg</span>
+  <span class="yaml-key">namespace:</span> <span class="yaml-string">llm-d</span>
+<span class="yaml-key">spec:</span>
+  <span class="yaml-key">modelArtifact:</span>
+    <span class="yaml-key">uri:</span> <span class="yaml-string">"oci://quay.io/llm-d/models:llama-3.3-70b-instruct-fp8-kv-int8"</span>
+  <span class="yaml-key">inferenceConfig:</span>
+    <span class="yaml-key">replicas:</span> <span class="yaml-number">2</span>            <span class="yaml-comment"># 2 decode pods</span>
     <span class="yaml-key">accelerator:</span>
       <span class="yaml-key">type:</span> <span class="yaml-string">nvidia.com/gpu</span>
       <span class="yaml-key">count:</span> <span class="yaml-number">4</span>
       <span class="yaml-key">product:</span> <span class="yaml-string">H200</span>
   <span class="yaml-key">prefill:</span>
-    <span class="yaml-key">replicas:</span> <span class="yaml-number">1</span>
+    <span class="yaml-key">replicas:</span> <span class="yaml-number">1</span>              <span class="yaml-comment"># 1 dedicated prefill pod</span>
+    <span class="yaml-key">accelerator:</span>
+      <span class="yaml-key">type:</span> <span class="yaml-string">nvidia.com/gpu</span>
+      <span class="yaml-key">count:</span> <span class="yaml-number">4</span>
+      <span class="yaml-key">product:</span> <span class="yaml-string">H200</span></code></pre>
+
+        <h3>7.3 Enabling KV Cache Transfer with NIXL and RDMA</h3>
+
+        <p>This enables high-performance KV cache transfer between prefill and decode pods using NIXL over RDMA. This requires InfiniBand or RoCE-capable networking.</p>
+
+        <pre><code><span class="yaml-comment"># KV cache transfer configuration</span>
+  <span class="yaml-key">kvCacheTransfer:</span>
+    <span class="yaml-key">connector:</span> <span class="yaml-string">nixl</span>          <span class="yaml-comment"># Use NVIDIA NIXL library</span>
+    <span class="yaml-key">transport:</span> <span class="yaml-string">rdma</span>          <span class="yaml-comment"># RDMA for zero-copy GPU-to-GPU transfer</span>
+    <span class="yaml-comment"># Alternative transports:</span>
+    <span class="yaml-comment"># transport: roce         # RDMA over Converged Ethernet</span>
+    <span class="yaml-comment"># transport: tcp          # TCP fallback (dev/test only)</span></code></pre>
+
+        <h3>7.4 Full Disaggregated Routing Configuration</h3>
+
+        <p>This is the complete production configuration with disaggregated routing, KV cache transfer, and optimized load balancing for each phase.</p>
+
+        <pre><code><span class="yaml-comment"># Full production disaggregated P/D deployment</span>
+<span class="yaml-key">apiVersion:</span> <span class="yaml-string">inference.llm-d.ai/v1alpha1</span>
+<span class="yaml-key">kind:</span> <span class="yaml-string">LLMInferenceService</span>
+<span class="yaml-key">metadata:</span>
+  <span class="yaml-key">name:</span> <span class="yaml-string">llama-3-3-70b-fp8-prod</span>
+  <span class="yaml-key">namespace:</span> <span class="yaml-string">llm-d</span>
+<span class="yaml-key">spec:</span>
+  <span class="yaml-key">modelArtifact:</span>
+    <span class="yaml-key">uri:</span> <span class="yaml-string">"oci://quay.io/llm-d/models:llama-3.3-70b-instruct-fp8-kv-int8"</span>
+
+  <span class="yaml-comment"># Decode pods -- optimized for memory-bandwidth-bound work</span>
+  <span class="yaml-key">inferenceConfig:</span>
+    <span class="yaml-key">replicas:</span> <span class="yaml-number">4</span>
     <span class="yaml-key">accelerator:</span>
       <span class="yaml-key">type:</span> <span class="yaml-string">nvidia.com/gpu</span>
       <span class="yaml-key">count:</span> <span class="yaml-number">4</span>
       <span class="yaml-key">product:</span> <span class="yaml-string">H200</span>
+
+  <span class="yaml-comment"># Prefill pods -- optimized for compute-bound work</span>
+  <span class="yaml-key">prefill:</span>
+    <span class="yaml-key">replicas:</span> <span class="yaml-number">2</span>
+    <span class="yaml-key">accelerator:</span>
+      <span class="yaml-key">type:</span> <span class="yaml-string">nvidia.com/gpu</span>
+      <span class="yaml-key">count:</span> <span class="yaml-number">4</span>
+      <span class="yaml-key">product:</span> <span class="yaml-string">H200</span>
+
+  <span class="yaml-comment"># KV cache transfer -- NIXL with RDMA for zero-copy</span>
   <span class="yaml-key">kvCacheTransfer:</span>
     <span class="yaml-key">connector:</span> <span class="yaml-string">nixl</span>
     <span class="yaml-key">transport:</span> <span class="yaml-string">rdma</span>
+
+  <span class="yaml-comment"># Routing -- disaggregated strategy with phase-specific policies</span>
   <span class="yaml-key">routing:</span>
     <span class="yaml-key">strategy:</span> <span class="yaml-string">disaggregated-prefill-decode</span>
     <span class="yaml-key">prefillRouting:</span>
-      <span class="yaml-key">loadBalancing:</span> <span class="yaml-string">least-load</span>
+      <span class="yaml-key">loadBalancing:</span> <span class="yaml-string">least-load</span>    <span class="yaml-comment"># distribute prefill evenly</span>
     <span class="yaml-key">decodeRouting:</span>
-      <span class="yaml-key">loadBalancing:</span> <span class="yaml-string">kv-affinity</span></code></pre>
+      <span class="yaml-key">loadBalancing:</span> <span class="yaml-string">kv-affinity</span>    <span class="yaml-comment"># route to pod with cached KV</span></code></pre>
 
-        <p>Let's break down each critical section:</p>
+        <h4>Configuration Breakdown</h4>
 
-        <p><strong>prefill.replicas:</strong> This creates dedicated prefill pods that only handle prompt processing. These pods don't do any token generation—they just run the initial forward pass through the model and transfer the KV cache to a decode pod.</p>
+        <ul>
+            <li><strong><code>prefill.replicas: 2</code></strong> -- Two dedicated prefill pods. In production, size this based on your average prompt length and arrival rate. A good starting point is a 1:2 ratio of prefill-to-decode pods for long-context workloads, since prefill completes faster than the full decode sequence.</li>
+            <li><strong><code>kvCacheTransfer.connector: nixl</code></strong> -- Use NVIDIA's NIXL library for KV cache transfer. NIXL handles GPU memory registration, transport selection, and chunked transfer orchestration.</li>
+            <li><strong><code>kvCacheTransfer.transport: rdma</code></strong> -- Specify RDMA as the transport. NIXL will use GPUDirect RDMA for zero-copy GPU-to-GPU transfer, bypassing both host CPU and OS kernel.</li>
+            <li><strong><code>routing.strategy: disaggregated-prefill-decode</code></strong> -- Enables the disaggregated routing mode. The router will direct new completion requests to prefill pods and manage the handoff to decode pods after KV cache transfer.</li>
+            <li><strong><code>prefillRouting.loadBalancing: least-load</code></strong> -- Distributes prefill work across pods based on current GPU utilization and queue depth. Prevents hot-spotting during traffic bursts.</li>
+            <li><strong><code>decodeRouting.loadBalancing: kv-affinity</code></strong> -- Routes requests to the decode pod that already holds the relevant KV cache. Critical for multi-turn conversations and requests with shared prompt prefixes (system prompts, RAG contexts).</li>
+        </ul>
 
-        <p><strong>kvCacheTransfer:</strong> This enables NixL (NVIDIA's efficient KV cache transfer protocol) for zero-copy KV cache transfer over RDMA. When a prefill pod finishes processing a prompt, it transfers the KV cache directly to a decode pod's GPU memory without going through CPU memory or the network stack. RDMA (Remote Direct Memory Access) means the GPU can write directly to another GPU's memory over the network, bypassing the host CPU entirely.</p>
 
-        <p><strong>routing.strategy: disaggregated-prefill-decode:</strong> This tells llm-d to route new prompts to prefill pods and ongoing generation to decode pods. When a request comes in, the router sends it to a prefill pod. The prefill pod processes the prompt, transfers the KV cache, and the decode pod takes over for generation.</p>
+        <!-- ============================================================ -->
+        <!-- SECTION 8: WHAT'S NEXT -->
+        <!-- ============================================================ -->
 
-        <p><strong>prefillRouting.loadBalancing: least-load:</strong> Distributes prefill work across available prefill pods based on their current load. This keeps prefill latency consistent even when traffic spikes.</p>
+        <h2 id="whats-next">8. What's Next</h2>
 
-        <p><strong>decodeRouting.loadBalancing: kv-affinity:</strong> Routes decode to the pod that already has the KV cache. If you're doing multi-turn conversations or requests with common prefixes, this ensures cache reuse.</p>
+        <p>llm-d is under active development as a CNCF Sandbox project, with a roadmap driven by production requirements and community input. Several developments are particularly relevant to disaggregated P/D:</p>
 
-        <h2>Expected Performance Impact</h2>
+        <ul>
+            <li><strong>Dynamic prefill/decode ratio scaling:</strong> Automatically adjust the number of prefill and decode pods based on observed workload patterns. During peak prompt-heavy traffic (start of business day, batch processing), scale up prefill pods. During sustained conversation traffic, scale up decode pods.</li>
+            <li><strong>LoRA adapter routing:</strong> Integration with LoRA adapter serving, enabling fine-tuned models to share base model infrastructure. Combined with disaggregation, this allows prefill pods to handle base model computation while decode pods load request-specific LoRA adapters.</li>
+            <li><strong>Speculative decoding integration:</strong> Using smaller draft models on prefill-class hardware to generate candidate tokens, then verifying them in batch on decode-class hardware. This creates a natural fit with disaggregation, where the prefill pods double as draft model runners.</li>
+            <li><strong>Cross-cluster KV cache transfer:</strong> Extending NIXL transfers across cluster boundaries for geo-distributed deployments, enabling prefill in one region and decode in another for data locality requirements.</li>
+            <li><strong>Improved cache eviction policies:</strong> Smarter algorithms for deciding when to evict cached KV data, incorporating request frequency patterns, prompt similarity, and business priority.</li>
+        </ul>
 
-        <p>What does this actually buy you? Based on modeling and early production deployments, here's what to expect:</p>
+        <p>The project is fully open source. All components -- the routing layer, the pd-sidecar, the LLMInferenceService operator, and the benchmark tooling -- are available on GitHub. Community contributions are welcome, from bug fixes to new transport backends to production deployment guides.</p>
 
-        <p><strong>Throughput:</strong> 30-60% higher sustained throughput because prefill and decode pods can pipeline. While decode pods are generating tokens for batch N, prefill pods are processing prompts for batch N+1. This overlap means you're utilizing more of your total GPU capacity at any given moment. In a traditional deployment, a GPU can't start the next prefill until the current decode finishes. With disaggregation, those operations happen concurrently on different hardware.</p>
 
-        <p><strong>TTFT stability:</strong> Dedicated prefill pods maintain consistent TTFT even under heavy decode load. In a traditional deployment, if you have 50 concurrent requests in their decode phase, a new prompt has to wait for compute resources. With dedicated prefill pods, new prompts get immediate attention because decode work is happening elsewhere.</p>
-
-        <p><strong>GPU utilization:</strong> Both pod types run at higher efficiency. Prefill pods keep compute units busy with matrix multiplications. Decode pods optimize for memory bandwidth with larger batch sizes. Each pod type is tuned for its specific workload pattern. A traditional pod has to compromise—it can't optimize batch size for both prefill and decode simultaneously.</p>
-
-        <h2>Honest Limitations</h2>
-
-        <p>Disaggregated prefill and decode is not a universal win. Here are the real trade-offs:</p>
-
-        <p><strong>KV cache transfer adds latency.</strong> Even with NixL and RDMA, transferring the cache is not instantaneous. For short prompts (under 1,000 tokens), the transfer overhead can exceed the prefill time savings. This is most beneficial for long-context workloads where prefill time dominates.</p>
-
-        <p><strong>Requires more total GPU memory.</strong> You have separate pods for each phase, which means the model weights are loaded twice (once on prefill pods, once on decode pods). If you're running at the edge of GPU memory capacity, this may not be feasible without model quantization or smaller batch sizes.</p>
-
-        <p><strong>Most beneficial at scale.</strong> For 1-2 pods serving low traffic, a standard deployment is simpler and performs just as well. Disaggregation shines when you have enough traffic to keep dedicated prefill pods busy and enough decode work to benefit from the separation.</p>
-
-        <p><strong>Network bandwidth between pods matters.</strong> For large KV caches (32k+ context), you're transferring gigabytes of data between pods. RDMA over InfiniBand or RoCE gives you 100+ GB/s, but standard Ethernet networks will bottleneck. Make sure your infrastructure can handle the bandwidth.</p>
-
-        <h2>What's Next</h2>
-
-        <p>llm-d is under active development as a CNCF Sandbox project. The roadmap includes dynamic scaling of the prefill/decode ratio based on workload patterns, integration with LoRA adapter routing for multi-model serving, and improved cache transfer protocols. The project is open source and community contributions are welcome.</p>
-
-        <p>If you're deploying LLMs at scale on Kubernetes, llm-d gives you production-ready infrastructure with advanced features like disaggregated prefill/decode, prefix-aware caching, and GPU-aware routing. It's built on proven components (vLLM, Kubernetes, OpenShift) and designed for operational simplicity.</p>
+        <!-- ============================================================ -->
+        <!-- CTA BOX -->
+        <!-- ============================================================ -->
 
         <div class="cta-box">
-            <h3>Get started with llm-d</h3>
+            <h3>Get Started with llm-d</h3>
             <ul>
-                <li>Explore the source: <a href="https://github.com/llm-d">https://github.com/llm-d</a></li>
-                <li>Interactive benchmark data: <a href="../index.html">../index.html</a></li>
-                <li>Deploy on OpenShift: <a href="https://llm-d.ai">https://llm-d.ai</a></li>
-                <li>Content hub: <a href="https://markellr-redhat.github.io/llm-d-content-hub/">https://markellr-redhat.github.io/llm-d-content-hub/</a></li>
-                <li>Join the community: <a href="https://github.com/llm-d/llm-d/discussions">https://github.com/llm-d/llm-d/discussions</a></li>
+                <li>Explore the source: <a href="https://github.com/llm-d">github.com/llm-d</a></li>
+                <li>Interactive benchmark visualization: <a href="../index.html">companion web app</a></li>
+                <li>Deploy on OpenShift: <a href="https://llm-d.ai">llm-d.ai</a></li>
+                <li>Content hub: <a href="https://markellr-redhat.github.io/llm-d-content-hub/">llm-d Content Hub</a></li>
+                <li>Join the community: <a href="https://github.com/llm-d/llm-d/discussions">GitHub Discussions</a></li>
             </ul>
-        </div>
-
-        <div class="reference-table">
-            <h3>Links Reference Table</h3>
-            <table>
-                <tr>
-                    <th>Reference</th>
-                    <th>URL</th>
-                </tr>
-                <tr>
-                    <td>llm-d Project</td>
-                    <td>https://llm-d.ai</td>
-                </tr>
-                <tr>
-                    <td>Interactive Explainer</td>
-                    <td>../index.html</td>
-                </tr>
-                <tr>
-                    <td>Llama 3.3 70B FP8 Model</td>
-                    <td>https://huggingface.co/neuralmagic/Llama-3.3-70B-Instruct-FP8-dynamic</td>
-                </tr>
-                <tr>
-                    <td>llm-d GitHub</td>
-                    <td>https://github.com/llm-d</td>
-                </tr>
-                <tr>
-                    <td>llm-d Content Hub</td>
-                    <td>https://markellr-redhat.github.io/llm-d-content-hub/</td>
-                </tr>
-                <tr>
-                    <td>Community Discussions</td>
-                    <td>https://github.com/llm-d/llm-d/discussions</td>
-                </tr>
-                <tr>
-                    <td>Red Hat Developer Blog</td>
-                    <td>https://developers.redhat.com/blog</td>
-                </tr>
-            </table>
         </div>
 
         <footer>
             <div class="footer-attribution">
-                Submitted by Markell Rawls · Developer Advocate · Red Hat
+                Written by Markell Rawls
             </div>
             <div class="footer-nav">
-                <a href="https://markellr-redhat.github.io/llm-d-content-hub/">← Back to Content Hub</a>
-                <a href="../index.html">Open Interactive App →</a>
+                <a href="https://markellr-redhat.github.io/llm-d-content-hub/">Back to Content Hub</a>
+                <a href="../index.html">Open Interactive App</a>
+                <a href="https://llm-d.ai">llm-d.ai</a>
             </div>
         </footer>
     </div>
