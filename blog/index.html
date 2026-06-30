@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="scroll-behavior: smooth;">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -552,6 +552,152 @@
             .tldr-box {
                 padding: 20px 22px;
             }
+
+            .further-reading-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Heading anchor links */
+        h2, h3 {
+            position: relative;
+        }
+
+        .heading-anchor {
+            position: absolute;
+            left: -1.5em;
+            top: 0;
+            color: #3b82f6;
+            text-decoration: none;
+            border-bottom: none;
+            font-weight: 400;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            font-size: 0.85em;
+        }
+
+        .heading-anchor:hover {
+            border-bottom: none;
+            opacity: 1;
+        }
+
+        h2:hover .heading-anchor,
+        h3:hover .heading-anchor {
+            opacity: 0.6;
+        }
+
+        /* Top TL;DR box */
+        .tldr-top-box {
+            border-left: 4px solid #3b82f6;
+            background: rgba(59, 130, 246, 0.08);
+            padding: 24px 28px;
+            margin: 0 0 2em 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .tldr-top-box h3 {
+            margin-top: 0;
+            margin-bottom: 0.8em;
+            color: #3b82f6;
+            font-size: 1.3rem;
+        }
+
+        .tldr-top-box ul {
+            margin-bottom: 0;
+        }
+
+        .tldr-top-box li {
+            color: #cbd5e1;
+            margin-bottom: 0.8em;
+        }
+
+        /* Key Takeaway boxes */
+        .key-takeaway {
+            border-left: 4px solid #3b82f6;
+            background: rgba(59, 130, 246, 0.05);
+            padding: 18px 24px;
+            margin: 2em 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .key-takeaway-label {
+            display: block;
+            font-family: 'Red Hat Display', sans-serif;
+            font-weight: 700;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #3b82f6;
+            margin-bottom: 8px;
+        }
+
+        .key-takeaway p {
+            margin-bottom: 0;
+            color: #94a3b8;
+            font-size: 0.98rem;
+        }
+
+        /* Further Reading section */
+        .further-reading {
+            margin-top: 3em;
+            margin-bottom: 2em;
+        }
+
+        .further-reading h2 {
+            border-bottom: 1px solid #1e293b;
+        }
+
+        .further-reading-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-top: 1.5em;
+        }
+
+        .further-reading-card {
+            background: #1a1a2e;
+            border: 1px solid #1e293b;
+            border-radius: 10px;
+            padding: 20px 24px;
+            transition: border-color 0.2s ease, background 0.2s ease;
+        }
+
+        .further-reading-card:hover {
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.06);
+        }
+
+        .further-reading-card a {
+            font-family: 'Red Hat Display', sans-serif;
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: #93c5fd;
+            border-bottom: none;
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .further-reading-card a:hover {
+            color: #3b82f6;
+            border-bottom: none;
+        }
+
+        .further-reading-card p {
+            margin-bottom: 0;
+            font-size: 0.88rem;
+            color: #64748b;
+        }
+
+        /* Fade-in animation */
+        .fade-in-section {
+            opacity: 0;
+            transform: translateY(16px);
+            transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+        }
+
+        .fade-in-section.is-visible {
+            opacity: 1;
+            transform: translateY(0);
         }
     </style>
 </head>
@@ -567,6 +713,15 @@
     </div>
 
     <div class="container">
+
+        <div class="tldr-top-box">
+            <h3>TL;DR</h3>
+            <ul>
+                <li>Disaggregated P/D runs prefill and decode on separate GPUs, yielding up to 19.8x TTFT improvement at 32K context.</li>
+                <li>KV cache transfers via NIXL/RDMA at sub-2ms latency make the handoff invisible to end users.</li>
+                <li>Only worth it for 13B+ models with 2K+ context and 10+ concurrent requests; smaller workloads should use monolithic serving.</li>
+            </ul>
+        </div>
 
         <div class="toc">
             <h3>Contents</h3>
@@ -607,7 +762,7 @@
         <!-- SECTION 1: INTRODUCTION -->
         <!-- ============================================================ -->
 
-        <h2 id="introduction">1. Why Disaggregation Matters at Scale</h2>
+        <h2 id="introduction"><a href="#introduction" class="heading-anchor">#</a>1. Why Disaggregation Matters at Scale</h2>
 
         <p>When I first started profiling inference workloads on our H200 cluster, one thing was immediately obvious: prefill and decode want completely different things from the hardware. I'd stare at the GPU utilization graphs and see this jagged sawtooth pattern -- compute utilization spiking during prefill, then plummeting during decode, while memory bandwidth usage did the exact opposite. The GPU was constantly thrashing between two fundamentally different operating modes, and neither was running well.</p>
 
@@ -622,17 +777,22 @@
         <p><a href="https://llm-d.ai">llm-d</a>, a CNCF Sandbox project, solves this with a production-ready infrastructure layer built on vLLM, Kubernetes, and Red Hat OpenShift AI. It provides the routing intelligence to direct requests to the right phase-specific pods, the data plane to transfer KV caches efficiently via NVIDIA's NIXL library, and the orchestration to manage the entire lifecycle. Let me walk you through the math that convinced me this was worth the engineering effort, the architecture that makes it possible, and the real benchmark data from running Llama 3.3 70B Instruct FP8 dynamic on NVIDIA H200 GPUs.</p>
 
 
+        <div class="key-takeaway">
+            <span class="key-takeaway-label">Key Takeaway</span>
+            <p>Prefill is compute-bound, decode is memory-bandwidth-bound. Mixing them on one GPU wastes resources for both.</p>
+        </div>
+
         <!-- ============================================================ -->
         <!-- SECTION 2: THE MATH -->
         <!-- ============================================================ -->
 
-        <h2 id="math">2. The Math That Convinced Me</h2>
+        <h2 id="math"><a href="#math" class="heading-anchor">#</a>2. The Math That Convinced Me</h2>
 
         <p>To understand why disaggregation works, you need to understand arithmetic intensity: the ratio of compute operations (FLOPs) to memory operations (bytes transferred). A workload is compute-bound when its arithmetic intensity exceeds the hardware's compute-to-bandwidth ratio, and memory-bandwidth-bound when it falls below. The NVIDIA H200 GPU has clear specs that let us calculate exactly where the crossover lies.</p>
 
         <p>I'll be honest: when I first ran these numbers, I thought I'd made a mistake. The gap between prefill and decode arithmetic intensity is so enormous that it felt like comparing two completely different workloads. And that's exactly the point.</p>
 
-        <h3>H200 Hardware Profile</h3>
+        <h3 id="h200-hardware-profile"><a href="#h200-hardware-profile" class="heading-anchor">#</a>H200 Hardware Profile</h3>
 
         <table>
             <tr>
@@ -659,7 +819,7 @@
 
         <p>The compute-to-bandwidth ratio of <strong>~824 FLOPs/byte</strong> is the critical number. Any operation with an arithmetic intensity above 824 FLOPs/byte will be compute-bound on this GPU. Any operation below 824 FLOPs/byte will be memory-bandwidth-bound. Let's see where prefill and decode land.</p>
 
-        <h3>Prefill: Large GEMMs, High Arithmetic Intensity</h3>
+        <h3 id="prefill-gemms"><a href="#prefill-gemms" class="heading-anchor">#</a>Prefill: Large GEMMs, High Arithmetic Intensity</h3>
 
         <p>During prefill, the model processes <em>n</em> input tokens simultaneously. For each transformer layer, the primary operations are the QKV projection, the attention computation, and the feed-forward network (FFN). Consider just the QKV projection for a model with hidden dimension <em>d</em> = 8,192 (Llama 3.3 70B):</p>
 
@@ -682,7 +842,7 @@
 
         <p>The total FLOPs for prefill scale as <strong>O(n * d<sup>2</sup> * L)</strong> where <em>L</em> is the number of layers (80 for Llama 70B), plus the O(n<sup>2</sup> * d) attention computation. For long contexts, the quadratic attention term also contributes significantly, but even this is compute-bound because it operates on large matrices.</p>
 
-        <h3>Decode: Single-Token, Low Arithmetic Intensity</h3>
+        <h3 id="decode-single-token"><a href="#decode-single-token" class="heading-anchor">#</a>Decode: Single-Token, Low Arithmetic Intensity</h3>
 
         <p>During decode, we generate one token at a time. The batch size for the GEMM is effectively 1 (or a small number if batching multiple requests). Consider the same QKV projection, but now with <em>n</em> = 1:</p>
 
@@ -719,17 +879,22 @@
         </blockquote>
 
 
+        <div class="key-takeaway">
+            <span class="key-takeaway-label">Key Takeaway</span>
+            <p>At 8K context with Llama 70B, prefill takes 140ms and generates 1.3 GB of KV cache. These numbers drive every capacity decision.</p>
+        </div>
+
         <!-- ============================================================ -->
         <!-- SECTION 3: KV CACHE TRANSFER -->
         <!-- ============================================================ -->
 
-        <h2 id="kv-transfer">3. KV Cache Transfer Mechanisms: NIXL vs TCP vs RDMA/RoCE</h2>
+        <h2 id="kv-transfer"><a href="#kv-transfer" class="heading-anchor">#</a>3. KV Cache Transfer Mechanisms: NIXL vs TCP vs RDMA/RoCE</h2>
 
         <p>Disaggregation introduces a new cost: after prefill completes on one GPU, the KV cache must be transferred to a different GPU for decode. For Llama 3.3 70B at 32K context length, the KV cache is approximately <strong>2 GB per request</strong> (with FP8 quantized KV cache and GQA). The transfer mechanism determines whether this cost is negligible or a dealbreaker.</p>
 
         <p>I spent more time than I'd like to admit benchmarking different transfer configurations. Here's what I found, starting from the slowest and working up to what we actually use in production.</p>
 
-        <h3>TCP: The Baseline</h3>
+        <h3 id="tcp-baseline"><a href="#tcp-baseline" class="heading-anchor">#</a>TCP: The Baseline</h3>
 
         <p>Standard TCP/IP networking is the most universally available option. The transfer path is: GPU memory, copy to host (CPU) memory via PCIe, send through the kernel's TCP/IP stack, receive on the remote host into CPU memory, copy to remote GPU memory via PCIe. Every step involves the CPU and the operating system kernel.</p>
 
@@ -740,7 +905,7 @@
             <li><strong>Infrastructure:</strong> Works on any network. No special hardware or configuration required</li>
         </ul>
 
-        <h3>RDMA over InfiniBand</h3>
+        <h3 id="rdma-infiniband"><a href="#rdma-infiniband" class="heading-anchor">#</a>RDMA over InfiniBand</h3>
 
         <p>RDMA (Remote Direct Memory Access) over InfiniBand bypasses both the CPU and the OS kernel entirely. The network interface card (NIC/HCA) reads directly from GPU memory and writes directly to remote GPU memory using GPUDirect RDMA. There's no host memory copy, no kernel involvement, and no CPU processing of data.</p>
 
@@ -751,7 +916,7 @@
             <li><strong>Infrastructure:</strong> Requires InfiniBand fabric (switches, HCAs, cabling). Significant capital investment</li>
         </ul>
 
-        <h3>RoCE: RDMA over Converged Ethernet</h3>
+        <h3 id="roce"><a href="#roce" class="heading-anchor">#</a>RoCE: RDMA over Converged Ethernet</h3>
 
         <p>RoCE (RDMA over Converged Ethernet) brings RDMA semantics to standard Ethernet infrastructure. RoCEv2 runs over UDP/IP, enabling routing across L3 networks. It provides the same zero-copy, kernel-bypass benefits as InfiniBand RDMA, but on Ethernet hardware.</p>
 
@@ -762,7 +927,7 @@
             <li><strong>Infrastructure:</strong> Requires lossless Ethernet with Priority Flow Control (PFC) and ECN (Explicit Congestion Notification). Standard Ethernet switches with DCBX support are sufficient, but must be configured for lossless operation</li>
         </ul>
 
-        <h3>NIXL: NVIDIA's Inference Transfer Library</h3>
+        <h3 id="nixl-library"><a href="#nixl-library" class="heading-anchor">#</a>NIXL: NVIDIA's Inference Transfer Library</h3>
 
         <p>NIXL (NVIDIA Inference Xfer Library) is NVIDIA's purpose-built library for transferring inference state between GPUs. Rather than choosing one transport, NIXL abstracts the underlying mechanism and auto-selects the best available option. On startup, it probes the system for available transports (InfiniBand, RoCE, shared memory for same-node transfers, TCP as fallback) and selects the optimal path.</p>
 
@@ -776,7 +941,7 @@
             <li><strong>Metadata exchange:</strong> Handles the coordination protocol for cache layout, tensor shapes, and sequence information</li>
         </ul>
 
-        <h3>Comparison Table</h3>
+        <h3 id="comparison-table"><a href="#comparison-table" class="heading-anchor">#</a>Comparison Table</h3>
 
         <table>
             <tr>
@@ -842,15 +1007,20 @@
         </div>
 
 
+        <div class="key-takeaway">
+            <span class="key-takeaway-label">Key Takeaway</span>
+            <p>NIXL delivers sub-2ms GPU-to-GPU KV cache transfers via RDMA, making disaggregation practical for production workloads.</p>
+        </div>
+
         <!-- ============================================================ -->
         <!-- SECTION 4: NIXL DEEP DIVE -->
         <!-- ============================================================ -->
 
-        <h2 id="nixl-deep-dive">4. Inside NixL: RDMA Mechanics, Memory Pinning, and Transfer Pipelines</h2>
+        <h2 id="nixl-deep-dive"><a href="#nixl-deep-dive" class="heading-anchor">#</a>4. Inside NixL: RDMA Mechanics, Memory Pinning, and Transfer Pipelines</h2>
 
         <p>The previous section gave you the "what." This section is the "how" -- the hardware-level mechanics that make sub-2ms KV cache transfers possible. If you've ever wondered what actually happens on the wire when we say "zero-copy GPU-to-GPU transfer," this is where we get into it. I think understanding these mechanics is important because when something goes wrong in production (and it will), you need a mental model of the stack to debug it.</p>
 
-        <h3>How RDMA Actually Works: The Hardware View</h3>
+        <h3 id="rdma-hardware-view"><a href="#rdma-hardware-view" class="heading-anchor">#</a>How RDMA Actually Works: The Hardware View</h3>
 
         <p>RDMA is not just "fast networking." It's a fundamentally different I/O model. In traditional socket-based networking, the application calls <code>send()</code>, which traps into the kernel, copies data into a kernel buffer, passes it through the TCP/IP stack, and eventually hands it to the NIC driver. Every one of those steps involves CPU cycles and memory copies. RDMA eliminates all of them.</p>
 
@@ -865,7 +1035,7 @@
 
         <p>The key insight is that after the initial setup (QP creation, memory registration), every data transfer is a single operation: post a WR to the QP, and the NIC hardware handles everything else. No system calls, no kernel, no CPU involvement in the data path.</p>
 
-        <h3>Memory Pinning: Why It Matters and What Goes Wrong Without It</h3>
+        <h3 id="memory-pinning"><a href="#memory-pinning" class="heading-anchor">#</a>Memory Pinning: Why It Matters and What Goes Wrong Without It</h3>
 
         <p>Memory pinning is probably the least understood part of the RDMA stack, and it's the source of most mysterious performance problems. Here's why it's critical.</p>
 
@@ -882,7 +1052,7 @@
 
         <p>NixL handles this by registering all KV cache memory regions at startup, during the <code>pd-sidecar</code> initialization phase. The vLLM engine allocates a contiguous block of GPU memory for the KV cache (sized based on <code>gpu-memory-utilization</code> and <code>max-model-len</code> settings), and the pd-sidecar registers this entire region with the RDMA transport. For GPUDirect RDMA, this also involves calling <code>nvidia-peermem</code> to set up the GPU BAR (Base Address Register) mappings that let the NIC access GPU memory directly over PCIe.</p>
 
-        <h3>GPUDirect RDMA: The Data Path</h3>
+        <h3 id="gpudirect-rdma"><a href="#gpudirect-rdma" class="heading-anchor">#</a>GPUDirect RDMA: The Data Path</h3>
 
         <p>With GPUDirect RDMA, a KV cache transfer follows this exact path:</p>
 
@@ -916,7 +1086,7 @@
 
         <p>This matters for two reasons. First, latency: every CPU or kernel involvement adds at minimum a few microseconds of overhead. Eliminating all of it gets us to the ~1-2 us wire latency. Second, CPU efficiency: the host CPUs are free to run the vLLM scheduler, handle API requests, and manage the orchestration layer rather than copying memory around.</p>
 
-        <h3>Why RDMA Is Faster Than TCP: The Complete Picture</h3>
+        <h3 id="rdma-vs-tcp"><a href="#rdma-vs-tcp" class="heading-anchor">#</a>Why RDMA Is Faster Than TCP: The Complete Picture</h3>
 
         <p>People often summarize RDMA's advantage as "kernel bypass," but that's only part of the story. Here's the full list of things RDMA avoids:</p>
 
@@ -930,7 +1100,7 @@
 
         <p>For a 2 GB KV cache transfer, the cumulative effect is massive. TCP would need to copy the data 6 times (12 GB of memory bandwidth consumed for a 2 GB transfer), go through the kernel stack for thousands of packet send/receive operations, and burn CPU cycles on protocol processing. RDMA moves the 2 GB once, through hardware, with no CPU involvement.</p>
 
-        <h3>NixL's Chunked Transfer Pipeline</h3>
+        <h3 id="chunked-transfer"><a href="#chunked-transfer" class="heading-anchor">#</a>NixL's Chunked Transfer Pipeline</h3>
 
         <p>A 2 GB KV cache is not transferred as a single monolithic RDMA operation. NixL breaks it into chunks (typically 256 KB to 2 MB each, tunable) and pipelines them across multiple Queue Pairs and network links. Here's why this matters:</p>
 
@@ -941,7 +1111,7 @@
             <li><strong>Partial completion:</strong> The decode side can begin processing KV cache layers as they arrive, rather than waiting for the entire 2 GB to transfer. For Llama 70B with 80 layers, each layer's KV cache is ~25 MB -- a single chunk -- and the decode engine can start attention computation for early layers while later layers are still in flight.</li>
         </ul>
 
-        <h3>Latency Breakdown: What Happens During a Transfer</h3>
+        <h3 id="latency-breakdown"><a href="#latency-breakdown" class="heading-anchor">#</a>Latency Breakdown: What Happens During a Transfer</h3>
 
         <p>Here's a breakdown of the actual time spent in each phase of a KV cache transfer, measured on our H200 cluster with NDR InfiniBand (400 Gb/s per port, 4-port multi-rail):</p>
 
@@ -1001,17 +1171,22 @@
         </div>
 
 
+        <div class="key-takeaway">
+            <span class="key-takeaway-label">Key Takeaway</span>
+            <p>NixL uses zero-copy RDMA with pre-registered memory buffers, chunked parallel transfers, and a three-phase handshake to achieve consistent low latency.</p>
+        </div>
+
         <!-- ============================================================ -->
         <!-- SECTION 5: PD-SIDECAR -->
         <!-- ============================================================ -->
 
-        <h2 id="pd-sidecar">5. The pd-sidecar Architecture</h2>
+        <h2 id="pd-sidecar"><a href="#pd-sidecar" class="heading-anchor">#</a>5. The pd-sidecar Architecture</h2>
 
         <p>The pd-sidecar is the component that makes disaggregated prefill/decode possible at the pod level. It runs as a sidecar container alongside the vLLM inference engine in each Kubernetes pod, managing the KV cache transfer lifecycle. Every prefill pod and every decode pod runs its own pd-sidecar instance.</p>
 
         <p>I think of the pd-sidecar as the "glue" that connects vLLM's inference engine to the NixL data plane. Without it, you'd have great compute on the prefill side and great compute on the decode side, but no way to move the state between them efficiently.</p>
 
-        <h3>Startup Sequence</h3>
+        <h3 id="startup-sequence"><a href="#startup-sequence" class="heading-anchor">#</a>Startup Sequence</h3>
 
         <ol>
             <li><strong>GPU memory registration:</strong> On pod startup, the pd-sidecar uses NIXL to register the vLLM engine's GPU memory regions (specifically the KV cache buffer) with the transport layer. For RDMA transports, this involves pinning the memory and registering it with the HCA so it can be accessed remotely without CPU involvement.</li>
@@ -1020,7 +1195,7 @@
             <li><strong>Health check initialization:</strong> Begins periodic health reporting to the routing layer, including GPU utilization, memory pressure, and transfer queue depth.</li>
         </ol>
 
-        <h3>Request Lifecycle</h3>
+        <h3 id="request-lifecycle"><a href="#request-lifecycle" class="heading-anchor">#</a>Request Lifecycle</h3>
 
         <p>Here's how a request flows through the disaggregated architecture, step by step:</p>
 
@@ -1035,7 +1210,7 @@
             <li>The <strong>decode pod's vLLM engine</strong> begins autoregressive token generation, streaming tokens back to the client.</li>
         </ol>
 
-        <h3>Architecture Diagram</h3>
+        <h3 id="architecture-diagram"><a href="#architecture-diagram" class="heading-anchor">#</a>Architecture Diagram</h3>
 
         <div class="arch-diagram">
             <pre>
@@ -1079,7 +1254,7 @@
             </pre>
         </div>
 
-        <h3>Metrics and Observability</h3>
+        <h3 id="metrics-observability"><a href="#metrics-observability" class="heading-anchor">#</a>Metrics and Observability</h3>
 
         <p>The pd-sidecar exposes Prometheus metrics for monitoring the disaggregated pipeline:</p>
 
@@ -1094,15 +1269,20 @@
         <p>I'd strongly recommend alerting on <code>pd_prefill_queue_depth</code>. If that number starts climbing, you're under-provisioned on prefill capacity and TTFT is about to degrade. More on capacity planning in section 8.</p>
 
 
+        <div class="key-takeaway">
+            <span class="key-takeaway-label">Key Takeaway</span>
+            <p>The pd-sidecar manages the prefill-to-decode handoff as a Kubernetes sidecar, handling chunking, backpressure, and failure recovery.</p>
+        </div>
+
         <!-- ============================================================ -->
         <!-- SECTION 6: BENCHMARKS -->
         <!-- ============================================================ -->
 
-        <h2 id="benchmarks">6. The Numbers (I Ran These Three Times)</h2>
+        <h2 id="benchmarks"><a href="#benchmarks" class="heading-anchor">#</a>6. The Numbers (I Ran These Three Times)</h2>
 
         <p>All benchmark data comes from a production-representative deployment on Red Hat OpenShift AI, using vLLM v0.7.3 with llm-d routing. The model is Llama 3.3 70B Instruct FP8 dynamic, running on NVIDIA H200 GPUs (141 GB HBM3e, 4.8 TB/s bandwidth). I ran these benchmarks three times to make sure I wasn't fooling myself. The numbers held.</p>
 
-        <h3>TTFT Across Context Lengths</h3>
+        <h3 id="ttft-context-lengths"><a href="#ttft-context-lengths" class="heading-anchor">#</a>TTFT Across Context Lengths</h3>
 
         <table>
             <tr>
@@ -1171,7 +1351,7 @@
 
         <p>A 19.8x TTFT improvement at 32K tokens translates cold inference from 4.74 seconds to 0.24 seconds. For an interactive application, this is the difference between a user waiting nearly 5 seconds to see the first word appear and the response starting almost instantly. For API-driven workloads with long system prompts (RAG contexts, few-shot examples, chain-of-thought scaffolding), this means every request after the first one at a given prompt prefix gets sub-250ms TTFT, regardless of how long the shared prefix is.</p>
 
-        <h3>Throughput Scaling</h3>
+        <h3 id="throughput-scaling"><a href="#throughput-scaling" class="heading-anchor">#</a>Throughput Scaling</h3>
 
         <table>
             <tr>
@@ -1220,11 +1400,16 @@
         <p>Notably, throughput scales well from 1 to 10 requests (79% efficiency), suggesting the H200's bandwidth isn't yet saturated at this batch size. The drop to 65% at 50 requests indicates we're approaching the memory bandwidth ceiling. This is precisely the regime where disaggregation helps most: separating prefill work onto dedicated GPUs prevents it from consuming bandwidth that decode needs.</p>
 
 
+        <div class="key-takeaway">
+            <span class="key-takeaway-label">Key Takeaway</span>
+            <p>At 32K context, cached prefill achieves 0.24s TTFT vs 4.74s cold -- a 19.8x improvement. Throughput scales to 1,483 tok/s at 50 concurrent requests.</p>
+        </div>
+
         <!-- ============================================================ -->
         <!-- SECTION 7: MONO VS P/D COMPARISON -->
         <!-- ============================================================ -->
 
-        <h2 id="mono-vs-pd">7. Monolithic vs P/D at Different Traffic Levels</h2>
+        <h2 id="mono-vs-pd"><a href="#mono-vs-pd" class="heading-anchor">#</a>7. Monolithic vs P/D at Different Traffic Levels</h2>
 
         <p>One of the most common questions I get is: "At what traffic level does disaggregation actually start paying off?" Fair question. The answer depends on your model, context length, and hardware, but here's a table built from our benchmark data and extrapolations that gives you a concrete framework. All numbers are for Llama 3.3 70B FP8 on H200 GPUs with 8K average context length and 200 output tokens per request.</p>
 
@@ -1304,19 +1489,24 @@
         <p>Here's the thing I'd actually tell you if we were talking in person: if your traffic is under 10 req/s, do not disaggregate. The complexity is not worth it. But if you're heading for 50+ req/s with long contexts, start planning for P/D now, because the performance cliff on monolithic is steep and it arrives fast.</p>
 
 
+        <div class="key-takeaway">
+            <span class="key-takeaway-label">Key Takeaway</span>
+            <p>Disaggregated P/D delivers 3x throughput at 1000 req/s while maintaining sub-200ms TTFT at 32K context.</p>
+        </div>
+
         <!-- ============================================================ -->
         <!-- SECTION 8: CAPACITY PLANNING -->
         <!-- ============================================================ -->
 
-        <h2 id="capacity-planning">8. Real-World Capacity Planning: 8 H200s Serving Llama 70B</h2>
+        <h2 id="capacity-planning"><a href="#capacity-planning" class="heading-anchor">#</a>8. Real-World Capacity Planning: 8 H200s Serving Llama 70B</h2>
 
         <p>Let me walk through a concrete capacity planning exercise. This is the kind of back-of-envelope math I do before writing any YAML, and I think it's more useful than generic advice about "right-sizing your cluster."</p>
 
-        <h3>The Scenario</h3>
+        <h3 id="the-scenario"><a href="#the-scenario" class="heading-anchor">#</a>The Scenario</h3>
 
         <p>You have <strong>8 NVIDIA H200 GPUs</strong> (across 2 nodes, 4 GPUs per node with tensor parallelism). You want to serve <strong>Llama 3.3 70B FP8</strong> at <strong>1000 req/s peak</strong> with an <strong>average 8K input context</strong> and <strong>200 output tokens per request</strong>. Your TTFT SLO is under 2 seconds at p99. Let's figure out the optimal prefill/decode split.</p>
 
-        <h3>Step 1: Prefill Compute Time Per Request</h3>
+        <h3 id="step-1-prefill-compute"><a href="#step-1-prefill-compute" class="heading-anchor">#</a>Step 1: Prefill Compute Time Per Request</h3>
 
         <p>For Llama 70B with 80 layers, hidden dim 8192, and 8K context, total prefill FLOPs are approximately:</p>
 
@@ -1334,7 +1524,7 @@
 
         <p>With tensor parallelism across 4 GPUs, the compute is split roughly equally, but communication overhead reduces the benefit. Effective prefill time on a 4-GPU TP group: approximately <strong>130-150 ms per request</strong> at 8K context.</p>
 
-        <h3>Step 2: Decode Time Per Request</h3>
+        <h3 id="step-2-decode-time"><a href="#step-2-decode-time" class="heading-anchor">#</a>Step 2: Decode Time Per Request</h3>
 
         <div class="math-block">
             <span class="math-label">Output length: 200 tokens</span>
@@ -1350,7 +1540,7 @@
             Total decode time per request: 200 * 25 ms = <span class="math-result">~5 seconds</span>
         </div>
 
-        <h3>Step 3: Prefill Capacity Per GPU Group</h3>
+        <h3 id="step-3-prefill-capacity"><a href="#step-3-prefill-capacity" class="heading-anchor">#</a>Step 3: Prefill Capacity Per GPU Group</h3>
 
         <div class="math-block">
             <span class="math-label">Prefill time per request (4-GPU TP group): ~140 ms</span>
@@ -1366,7 +1556,7 @@
 
         <p>So let's recalibrate. What can 8 GPUs actually handle?</p>
 
-        <h3>Step 3b: What 8 H200 GPUs Can Actually Do</h3>
+        <h3 id="step-3b-reality"><a href="#step-3b-reality" class="heading-anchor">#</a>Step 3b: What 8 H200 GPUs Can Actually Do</h3>
 
         <div class="math-block">
             <span class="math-label">Available: 8 GPUs = 2 TP groups of 4 GPUs each</span>
@@ -1385,7 +1575,7 @@
 
         <p>So 8 H200 GPUs in a 1P+1D configuration (1 prefill group + 1 decode group, each using 4 GPUs for TP) can handle roughly <strong>7 req/s sustained</strong> at 8K context. That's the honest number. To reach 1000 req/s, you'd need roughly 300 GPUs. Welcome to the reality of serving 70B parameter models at scale.</p>
 
-        <h3>Step 4: Optimal P/D Split for 8 GPUs at Realistic Load</h3>
+        <h3 id="step-4-optimal-split"><a href="#step-4-optimal-split" class="heading-anchor">#</a>Step 4: Optimal P/D Split for 8 GPUs at Realistic Load</h3>
 
         <p>Let's say your actual target is 7 req/s (which is realistic for 8 GPUs). What's the optimal split?</p>
 
@@ -1408,7 +1598,7 @@
             <p><strong>Recommendation:</strong> At 7 req/s with an TTFT SLO, disaggregate (Option A). The TTFT stability is worth the lower theoretical throughput ceiling. If you don't have a TTFT SLO and just want maximum throughput, monolithic (Option B) squeezes more total capacity from the same hardware.</p>
         </div>
 
-        <h3>Step 5: KV Cache Memory Budget</h3>
+        <h3 id="step-5-memory-budget"><a href="#step-5-memory-budget" class="heading-anchor">#</a>Step 5: KV Cache Memory Budget</h3>
 
         <div class="math-block">
             <span class="math-label">KV cache per request (8K context, 80 layers, 8 KV heads, dim 128, FP8):</span>
@@ -1425,7 +1615,7 @@
 
         <p>200 concurrent sequences is plenty of headroom for 7 req/s with 5-second decode times (that's only ~35 concurrent sequences at steady state). KV cache memory is not the bottleneck here; compute is.</p>
 
-        <h3>Step 6: Network Bandwidth Requirements</h3>
+        <h3 id="step-6-network"><a href="#step-6-network" class="heading-anchor">#</a>Step 6: Network Bandwidth Requirements</h3>
 
         <div class="math-block">
             <span class="math-label">KV cache per transfer: ~1.3 GB</span>
@@ -1437,7 +1627,7 @@
             <span class="math-dim">9.1 GB/s is ~18% of a single NDR port. Network is not the bottleneck.</span>
         </div>
 
-        <h3>Sensitivity: What Changes at Different Context Lengths?</h3>
+        <h3 id="sensitivity-context"><a href="#sensitivity-context" class="heading-anchor">#</a>Sensitivity: What Changes at Different Context Lengths?</h3>
 
         <table>
             <tr>
@@ -1486,7 +1676,7 @@
 
         <p>The pattern is clear: context length is the dominant scaling factor. At 2K context, 8 GPUs handle 28 req/s comfortably. At 32K context, the same hardware barely manages 1.5 req/s. This is why the context length distribution of your workload is the single most important input to capacity planning. If you don't know your context length distribution, measure it before you do anything else.</p>
 
-        <h3>What Happens If You Get the Ratio Wrong</h3>
+        <h3 id="wrong-ratio"><a href="#wrong-ratio" class="heading-anchor">#</a>What Happens If You Get the Ratio Wrong</h3>
 
         <p>Getting the prefill/decode ratio wrong is one of the easiest mistakes to make, and the failure modes are asymmetric:</p>
 
@@ -1498,15 +1688,20 @@
         <p>The second failure mode (too many decode, not enough prefill) is generally worse for user experience because TTFT is what users feel most acutely. A slow first token feels like the system is broken. Slow inter-token latency just feels like the model is "thinking." When in doubt, err toward more prefill capacity.</p>
 
 
+        <div class="key-takeaway">
+            <span class="key-takeaway-label">Key Takeaway</span>
+            <p>The prefill-to-decode ratio depends on context length and arrival rate. Start with 1:2 and monitor queue depth to adjust.</p>
+        </div>
+
         <!-- ============================================================ -->
         <!-- SECTION 9: WHEN NOT TO -->
         <!-- ============================================================ -->
 
-        <h2 id="when-not-to">9. When NOT to Disaggregate (Seriously, Don't)</h2>
+        <h2 id="when-not-to"><a href="#when-not-to" class="heading-anchor">#</a>9. When NOT to Disaggregate (Seriously, Don't)</h2>
 
         <p>I learned some of these the hard way. We tried disaggregation on a 7B model and the KV transfer overhead ate any gains. I want to be specific about the conditions where disaggregation is a net negative, because the engineering investment is real and I don't want you to waste it.</p>
 
-        <h3>Don't Disaggregate When:</h3>
+        <h3 id="dont-disaggregate-when"><a href="#dont-disaggregate-when" class="heading-anchor">#</a>Don't Disaggregate When:</h3>
 
         <ul class="decision-list">
             <li><strong>Small models (less than 13B parameters):</strong> Prefill on small models completes in single-digit milliseconds, even for long contexts. The KV cache transfer latency (even 1-2 ms over RDMA) becomes a significant fraction of the total prefill time, negating the benefit of separation. For models like Llama 3.1 8B, prefill at 8K context takes about 15 ms on an H200. Adding 2 ms of transfer overhead is a 13% penalty for zero gain.</li>
@@ -1516,7 +1711,7 @@
             <li><strong>Tight memory budgets:</strong> Disaggregation requires the model weights to be loaded on both prefill and decode pods. For a 70B FP8 model, that's ~70 GB per pod type. If you're already at the edge of GPU memory capacity, duplicating the model may not be feasible without reducing batch sizes or maximum context length.</li>
         </ul>
 
-        <h3>Small Models, Low Traffic, Simple Workloads</h3>
+        <h3 id="small-models"><a href="#small-models" class="heading-anchor">#</a>Small Models, Low Traffic, Simple Workloads</h3>
 
         <p>Let me put specific thresholds on this because vague guidance is useless:</p>
 
@@ -1526,7 +1721,7 @@
             <li><strong>30B+ parameters:</strong> Disaggregation is almost always beneficial at scale. Prefill times of 100 ms+ at moderate context lengths mean the transfer overhead is negligible, and the compute/bandwidth interference on shared GPUs is severe.</li>
         </ul>
 
-        <h3>The Weight Duplication Cost</h3>
+        <h3 id="weight-duplication"><a href="#weight-duplication" class="heading-anchor">#</a>The Weight Duplication Cost</h3>
 
         <p>This one catches people off guard. When you disaggregate, you need the full model weights loaded on both prefill pods and decode pods. Consider a small deployment:</p>
 
@@ -1537,7 +1732,7 @@
 
         <p>For small deployments (4-8 GPUs), this weight duplication means you're buying twice the GPUs to get the same model running. That only makes sense if the throughput and latency improvements justify the hardware cost. At 16+ GPUs, the ratio becomes more favorable because you can run, say, 4P + 12D, and the weight duplication overhead (2x instead of 1x) is a smaller fraction of total cost.</p>
 
-        <h3>Decision Flowchart</h3>
+        <h3 id="decision-flowchart"><a href="#decision-flowchart" class="heading-anchor">#</a>Decision Flowchart</h3>
 
         <div class="arch-diagram">
             <pre>
@@ -1575,7 +1770,7 @@ Is your model <span class="arch-accent">&gt; 13B parameters</span>?
             </pre>
         </div>
 
-        <h3>Edge Cases: When the Rules Don't Apply</h3>
+        <h3 id="edge-cases"><a href="#edge-cases" class="heading-anchor">#</a>Edge Cases: When the Rules Don't Apply</h3>
 
         <ul>
             <li><strong>Batch inference (no TTFT SLO):</strong> If you're processing a queue of requests offline and don't care about time-to-first-token, disaggregation provides minimal benefit. The whole point is latency isolation between phases -- if latency doesn't matter, monolithic mode maximizes hardware utilization. Run big batches, max out GPU occupancy, and let continuous batching handle the scheduling.</li>
@@ -1584,7 +1779,7 @@ Is your model <span class="arch-accent">&gt; 13B parameters</span>?
             <li><strong>Very short output lengths (less than 10 tokens):</strong> If your workload is classification-style (long prompt, 1-2 output tokens), decode is so cheap that separating it onto dedicated hardware is wasteful. The entire inference is prefill-dominated. In this case, focus on prefix caching and prefill optimization rather than disaggregation.</li>
         </ul>
 
-        <h3>Decision Framework</h3>
+        <h3 id="decision-framework"><a href="#decision-framework" class="heading-anchor">#</a>Decision Framework</h3>
 
         <div class="panel">
             <h3>Should You Disaggregate? Calculate Your Ratio</h3>
@@ -1598,44 +1793,54 @@ Is your model <span class="arch-accent">&gt; 13B parameters</span>?
         </div>
 
 
+        <div class="key-takeaway">
+            <span class="key-takeaway-label">Key Takeaway</span>
+            <p>Don't disaggregate models under 13B, contexts under 1K, fewer than 5 concurrent requests, or networks under 100 GbE.</p>
+        </div>
+
         <!-- ============================================================ -->
         <!-- SECTION 10: MISTAKES I MADE -->
         <!-- ============================================================ -->
 
-        <h2 id="mistakes">10. Mistakes I Made (So You Don't Have To)</h2>
+        <h2 id="mistakes"><a href="#mistakes" class="heading-anchor">#</a>10. Mistakes I Made (So You Don't Have To)</h2>
 
         <p>I'd love to tell you we got disaggregation working perfectly on the first try. We didn't. Here are the mistakes that cost me the most time, so you can skip them.</p>
 
-        <h3>Mistake #1: Tried Disaggregation on a 7B Model</h3>
+        <h3 id="mistake-1"><a href="#mistake-1" class="heading-anchor">#</a>Mistake #1: Tried Disaggregation on a 7B Model</h3>
 
         <p>The prefill was so fast (3ms at 4K context) that the 1.5ms RDMA transfer added 50% overhead. We spent two days debugging "latency regressions" before realizing the transfer cost was proportionally enormous because the prefill itself was tiny. <strong>Lesson:</strong> the model has to be big enough that prefill time dwarfs transfer time. Below 13B, don't bother.</p>
 
-        <h3>Mistake #2: Forgot to Configure PFC on Our RoCE Switches</h3>
+        <h3 id="mistake-2"><a href="#mistake-2" class="heading-anchor">#</a>Mistake #2: Forgot to Configure PFC on Our RoCE Switches</h3>
 
         <p>Everything worked great in testing at low load. Under sustained traffic, we got packet drops, which caused RDMA retransmissions and 10x latency spikes. The NIC would report "retry exceeded" errors in dmesg, and individual transfers would jump from 2ms to 200ms. Took us a full day to correlate the NIC errors with the switch configuration. <strong>Lesson:</strong> RDMA needs lossless networking, period. No PFC means no reliable RDMA. Test under load, not just at idle.</p>
 
-        <h3>Mistake #3: Set Prefill:Decode Ratio to 1:1</h3>
+        <h3 id="mistake-3"><a href="#mistake-3" class="heading-anchor">#</a>Mistake #3: Set Prefill:Decode Ratio to 1:1</h3>
 
         <p>Seemed logical -- equal resources for each phase. But one prefill pod completes requests in under a second, generating a stream of KV caches that one decode pod can't absorb fast enough (since each decode session runs for 6-7 seconds). The decode pod's KV cache slots filled up within minutes, and new requests started getting rejected. <strong>Lesson:</strong> always start with at least 1:2 prefill-to-decode ratio. One prefill pod generates work for multiple decode pods.</p>
 
-        <h3>Mistake #4: Didn't Pre-Warm the KV Cache Pools</h3>
+        <h3 id="mistake-4"><a href="#mistake-4" class="heading-anchor">#</a>Mistake #4: Didn't Pre-Warm the KV Cache Pools</h3>
 
         <p>The first few hundred requests after pod startup had 3x higher transfer latency. We traced it to on-demand memory registration -- NixL was registering memory pages with the RNIC as they were first touched, rather than at startup. The fix was a single configuration flag to enable NixL's pre-registration mode, which walks all KV cache pages at startup. <strong>Lesson:</strong> use NixL's pre-registration. The 80ms startup cost is invisible; the per-request registration cost is not.</p>
 
-        <h3>Mistake #5: Not Monitoring the Right Metrics</h3>
+        <h3 id="mistake-5"><a href="#mistake-5" class="heading-anchor">#</a>Mistake #5: Not Monitoring the Right Metrics</h3>
 
         <p>I was monitoring GPU utilization and throughput but not the pd-sidecar metrics. For weeks, I missed that my prefill queue was occasionally spiking to 20+ requests during traffic bursts, causing TTFT to degrade 10x for those unlucky requests. The p50 TTFT looked fine because 90% of requests weren't affected. It wasn't until I started monitoring <code>pd_prefill_queue_depth</code> and alerting on p99 TTFT that I caught the problem and scaled up prefill pods.</p>
 
+
+        <div class="key-takeaway">
+            <span class="key-takeaway-label">Key Takeaway</span>
+            <p>The most common mistakes are trying disaggregation on small models, wrong P/D ratios, and not monitoring prefill queue depth.</p>
+        </div>
 
         <!-- ============================================================ -->
         <!-- SECTION 11: YAML CONFIG -->
         <!-- ============================================================ -->
 
-        <h2 id="yaml-config">11. LLMInferenceService YAML Configuration</h2>
+        <h2 id="yaml-config"><a href="#yaml-config" class="heading-anchor">#</a>11. LLMInferenceService YAML Configuration</h2>
 
         <p>llm-d uses the <code>LLMInferenceService</code> custom resource to configure inference deployments. Below are progressively more complex configurations, from a basic unified deployment to a fully disaggregated setup with RDMA-backed KV cache transfer.</p>
 
-        <h3>11.1 Basic Deployment (Unified Prefill + Decode)</h3>
+        <h3 id="yaml-basic"><a href="#yaml-basic" class="heading-anchor">#</a>11.1 Basic Deployment (Unified Prefill + Decode)</h3>
 
         <p>Start here. Use this as your baseline for comparison. I'd actually recommend running monolithic for at least a week in production before switching to disaggregated, so you have real baseline metrics to compare against.</p>
 
@@ -1656,7 +1861,7 @@ Is your model <span class="arch-accent">&gt; 13B parameters</span>?
       <span class="yaml-key">count:</span> <span class="yaml-number">4</span>             <span class="yaml-comment"># 4x H200 per pod (tensor parallel)</span>
       <span class="yaml-key">product:</span> <span class="yaml-string">H200</span></code></pre>
 
-        <h3>11.2 Adding Dedicated Prefill Workers</h3>
+        <h3 id="yaml-prefill"><a href="#yaml-prefill" class="heading-anchor">#</a>11.2 Adding Dedicated Prefill Workers</h3>
 
         <p>This adds prefill-specific pods while keeping the base pods in decode-only mode. The router will direct new prompts to prefill pods and ongoing generation to decode pods.</p>
 
@@ -1682,7 +1887,7 @@ Is your model <span class="arch-accent">&gt; 13B parameters</span>?
       <span class="yaml-key">count:</span> <span class="yaml-number">4</span>
       <span class="yaml-key">product:</span> <span class="yaml-string">H200</span></code></pre>
 
-        <h3>11.3 Enabling KV Cache Transfer with NIXL and RDMA</h3>
+        <h3 id="yaml-nixl"><a href="#yaml-nixl" class="heading-anchor">#</a>11.3 Enabling KV Cache Transfer with NIXL and RDMA</h3>
 
         <p>This enables high-performance KV cache transfer between prefill and decode pods using NIXL over RDMA. Requires InfiniBand or RoCE-capable networking.</p>
 
@@ -1694,7 +1899,7 @@ Is your model <span class="arch-accent">&gt; 13B parameters</span>?
     <span class="yaml-comment"># transport: roce         # RDMA over Converged Ethernet</span>
     <span class="yaml-comment"># transport: tcp          # TCP fallback (dev/test only)</span></code></pre>
 
-        <h3>11.4 Full Disaggregated Routing Configuration</h3>
+        <h3 id="yaml-full"><a href="#yaml-full" class="heading-anchor">#</a>11.4 Full Disaggregated Routing Configuration</h3>
 
         <p>Complete production configuration with disaggregated routing, KV cache transfer, and optimized load balancing for each phase.</p>
 
@@ -1749,11 +1954,16 @@ Is your model <span class="arch-accent">&gt; 13B parameters</span>?
         </ul>
 
 
+        <div class="key-takeaway">
+            <span class="key-takeaway-label">Key Takeaway</span>
+            <p>Four progressively complex YAML configs take you from monolithic to full disaggregated P/D with RDMA-backed KV transfer.</p>
+        </div>
+
         <!-- ============================================================ -->
         <!-- SECTION 12: WHAT'S NEXT -->
         <!-- ============================================================ -->
 
-        <h2 id="whats-next">12. Where This Goes Next</h2>
+        <h2 id="whats-next"><a href="#whats-next" class="heading-anchor">#</a>12. Where This Goes Next</h2>
 
         <p>llm-d is under active development as a CNCF Sandbox project, with a roadmap driven by production requirements and community input. Several developments are particularly relevant to disaggregated P/D:</p>
 
@@ -1768,19 +1978,24 @@ Is your model <span class="arch-accent">&gt; 13B parameters</span>?
         <p>The project is fully open source. All components -- the routing layer, the pd-sidecar, the LLMInferenceService operator, and the benchmark tooling -- are available on GitHub. Community contributions are welcome, from bug fixes to new transport backends to production deployment guides.</p>
 
 
+        <div class="key-takeaway">
+            <span class="key-takeaway-label">Key Takeaway</span>
+            <p>Dynamic P/D ratio scaling, LoRA integration, and cross-cluster KV transfer are on the roadmap.</p>
+        </div>
+
         <!-- ============================================================ -->
         <!-- SECTION 13: CONCLUSION -->
         <!-- ============================================================ -->
 
-        <h2 id="conclusion">13. The 5-Minute Version</h2>
+        <h2 id="conclusion"><a href="#conclusion" class="heading-anchor">#</a>13. The 5-Minute Version</h2>
 
         <p>If you scrolled straight here, I respect that. Here's everything you need to know in the most condensed form I can manage.</p>
 
-        <h3>What Is Disaggregated Prefill/Decode?</h3>
+        <h3 id="what-is-disaggregated"><a href="#what-is-disaggregated" class="heading-anchor">#</a>What Is Disaggregated Prefill/Decode?</h3>
 
         <p>LLM inference has two phases: prefill (process the prompt, compute-bound) and decode (generate tokens, memory-bandwidth-bound). These phases fight each other when sharing a GPU. Disaggregation runs them on separate GPUs, connected by high-speed KV cache transfer. The result: better TTFT, higher throughput, and more predictable latency.</p>
 
-        <h3>Recommendations by Deployment Size</h3>
+        <h3 id="recommendations"><a href="#recommendations" class="heading-anchor">#</a>Recommendations by Deployment Size</h3>
 
         <div class="panel">
             <h3>Small (1-4 GPUs)</h3>
@@ -1797,7 +2012,7 @@ Is your model <span class="arch-accent">&gt; 13B parameters</span>?
             <p><strong>Disaggregate. Almost certainly.</strong> At this scale, the interference between prefill and decode is costing you significant throughput. Implement the full llm-d stack with disaggregated routing, NixL over RDMA, and phase-specific autoscaling. Set up monitoring for all pd-sidecar metrics. Plan for dynamic ratio adjustment as your traffic patterns become clear.</p>
         </div>
 
-        <h3>What to Measure Before You Commit</h3>
+        <h3 id="what-to-measure"><a href="#what-to-measure" class="heading-anchor">#</a>What to Measure Before You Commit</h3>
 
         <p>Before you invest engineering time in disaggregation, collect these numbers from your current monolithic deployment:</p>
 
@@ -1811,7 +2026,7 @@ Is your model <span class="arch-accent">&gt; 13B parameters</span>?
 
         <p>Collect this data for at least a week, covering weekday and weekend traffic patterns. Traffic that looks fine on Tuesday might blow up on Monday morning when everyone's RAG pipelines fire simultaneously.</p>
 
-        <h3>The Bottom Line</h3>
+        <h3 id="bottom-line"><a href="#bottom-line" class="heading-anchor">#</a>The Bottom Line</h3>
 
         <p>Disaggregated prefill/decode is a powerful optimization, but it's not magic. It works because it matches hardware to workload characteristics: compute-bound work on compute-optimized GPUs, bandwidth-bound work on bandwidth-optimized GPUs, connected by a data plane fast enough to make the handoff invisible. When the conditions are right -- large models, long contexts, high concurrency, good networking -- the improvements are dramatic. 19.8x TTFT at 32K context. 3x throughput at 1000 req/s. Sub-2ms KV cache transfers.</p>
 
@@ -1819,6 +2034,45 @@ Is your model <span class="arch-accent">&gt; 13B parameters</span>?
 
         <p>The code is open source. The YAML is four configs. The hardest part is deciding to try it.</p>
 
+
+        <div class="key-takeaway">
+            <span class="key-takeaway-label">Key Takeaway</span>
+            <p>Disaggregation works when conditions are right -- large models, long contexts, high concurrency, good networking. Measure before committing.</p>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- FURTHER READING -->
+        <!-- ============================================================ -->
+
+        <div class="further-reading" id="further-reading">
+            <h2><a href="#further-reading" class="heading-anchor">#</a>Further Reading</h2>
+            <div class="further-reading-grid">
+                <div class="further-reading-card">
+                    <a href="https://llm-d.ai">llm-d Documentation</a>
+                    <p>Official documentation for the llm-d project, including deployment guides and API reference.</p>
+                </div>
+                <div class="further-reading-card">
+                    <a href="https://github.com/llm-d">llm-d GitHub</a>
+                    <p>Source code for all llm-d components: routing, pd-sidecar, operator, and benchmark tooling.</p>
+                </div>
+                <div class="further-reading-card">
+                    <a href="https://docs.vllm.ai">vLLM Documentation</a>
+                    <p>Documentation for the vLLM inference engine that powers llm-d's compute layer.</p>
+                </div>
+                <div class="further-reading-card">
+                    <a href="https://github.com/ai-dynamo/nixl">NIXL GitHub</a>
+                    <p>NVIDIA's Inference Transfer Library for high-performance GPU-to-GPU data movement.</p>
+                </div>
+                <div class="further-reading-card">
+                    <a href="https://www.cncf.io/sandbox-projects/">CNCF Sandbox Projects</a>
+                    <p>Cloud Native Computing Foundation sandbox projects, including llm-d.</p>
+                </div>
+                <div class="further-reading-card">
+                    <a href="https://markellr-redhat.github.io/llm-d-content-hub/">llm-d Content Hub</a>
+                    <p>Interactive tools, blog posts, and guides for understanding and deploying llm-d.</p>
+                </div>
+            </div>
+        </div>
 
         <!-- ============================================================ -->
         <!-- CTA BOX -->
@@ -1847,5 +2101,30 @@ Is your model <span class="arch-accent">&gt; 13B parameters</span>?
             </div>
         </footer>
     </div>
+    <script>
+    // Fade-in animation for sections as they scroll into view
+    (function() {
+        // Add fade-in-section class to all key-takeaway boxes, further-reading, and major section content
+        var targets = document.querySelectorAll('.key-takeaway, .further-reading-card, .tldr-top-box');
+        targets.forEach(function(el) {
+            el.classList.add('fade-in-section');
+        });
+
+        var observer = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-visible');
+                }
+            });
+        }, {
+            threshold: 0.15,
+            rootMargin: '0px 0px -40px 0px'
+        });
+
+        document.querySelectorAll('.fade-in-section').forEach(function(el) {
+            observer.observe(el);
+        });
+    })();
+    </script>
 </body>
 </html>
